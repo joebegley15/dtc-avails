@@ -91,8 +91,13 @@ export async function commitCsv(csvText: string): Promise<CommitResult> {
     await sql.transaction(
       toInsert.map(
         (r) =>
-          sql`insert into shows (city, neighborhood, show_date, show_time, venue, capacity, producer_id)
-              values (${r.city}, ${r.neighborhood}, ${r.showDate}, ${r.showTime}, ${r.venue}, ${r.capacity}, ${r.producerId})`
+          sql`with new_show as (
+                insert into shows (city, neighborhood, show_date, show_time, venue, capacity)
+                values (${r.city}, ${r.neighborhood}, ${r.showDate}, ${r.showTime}, ${r.venue}, ${r.capacity})
+                returning id
+              )
+              insert into show_producers (show_id, producer_id)
+              select id, ${r.producerId}::integer from new_show where ${r.producerId}::integer is not null`
       )
     );
   }

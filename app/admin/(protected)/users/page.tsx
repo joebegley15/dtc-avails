@@ -1,0 +1,67 @@
+import { sql } from "@/lib/db";
+import { AddUserForm } from "./add-user-form";
+
+type UserRow = {
+  id: number;
+  name: string;
+  email: string;
+  phone_last4: string;
+  role: "admin" | "producer" | "comic";
+  home_market: string | null;
+  is_all_star: boolean;
+};
+
+export default async function AdminUsersPage() {
+  const users = (await sql`
+    select id, name, email, phone_last4, role, home_market, is_all_star
+    from users
+    order by role, name
+  `) as UserRow[];
+
+  return (
+    <div className="mx-auto w-full max-w-4xl px-4 py-10">
+      <h1 className="text-lg font-semibold text-zinc-950">Users</h1>
+      <p className="mt-1 text-sm text-zinc-600">
+        Add producers, comics, and admins here.
+      </p>
+
+      <AddUserForm />
+
+      <div className="mt-8 overflow-x-auto">
+        <table className="w-full min-w-[640px] text-left text-sm">
+          <thead>
+            <tr className="border-b border-black/10 text-xs uppercase tracking-wide text-zinc-500">
+              <th className="py-2 pr-4">Name</th>
+              <th className="py-2 pr-4">Email</th>
+              <th className="py-2 pr-4">Phone code</th>
+              <th className="py-2 pr-4">Role</th>
+              <th className="py-2 pr-4">Home market</th>
+              <th className="py-2">All-star</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-black/5">
+            {users.map((u) => (
+              <tr key={u.id}>
+                <td className="py-2 pr-4 font-medium text-zinc-950">{u.name}</td>
+                <td className="py-2 pr-4 text-zinc-600">{u.email}</td>
+                <td className="py-2 pr-4 text-zinc-600">{u.phone_last4}</td>
+                <td className="py-2 pr-4 capitalize text-zinc-600">{u.role}</td>
+                <td className="py-2 pr-4 text-zinc-600">{u.home_market ?? "—"}</td>
+                <td className="py-2">
+                  {u.is_all_star && <span className="text-[#DA1717]">★</span>}
+                </td>
+              </tr>
+            ))}
+            {users.length === 0 && (
+              <tr>
+                <td colSpan={6} className="py-4 text-center text-zinc-500">
+                  No users yet.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

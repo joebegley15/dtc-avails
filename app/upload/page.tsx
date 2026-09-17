@@ -28,7 +28,8 @@ export default async function UploadPage() {
       to_char(s.show_time, 'HH24:MI') as show_time,
       s.venue, u.name as producer_name
     from shows s
-    left join users u on u.id = s.producer_id
+    left join show_producers sp on sp.show_id = s.id
+    left join users u on u.id = sp.producer_id
     order by s.created_at desc
     limit 15
   `) as RecentShow[];
