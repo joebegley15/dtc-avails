@@ -1,11 +1,12 @@
 import { sql } from "@/lib/db";
 import { AddUserForm } from "./add-user-form";
+import { ResetPasswordButton } from "./reset-password-button";
 
 type UserRow = {
   id: number;
   name: string;
   email: string;
-  phone_last4: string;
+  username: string | null;
   role: "admin" | "producer" | "comic";
   home_market: string | null;
   is_all_star: boolean;
@@ -13,7 +14,7 @@ type UserRow = {
 
 export default async function AdminUsersPage() {
   const users = (await sql`
-    select id, name, email, phone_last4, role, home_market, is_all_star
+    select id, name, email, username, role, home_market, is_all_star
     from users
     order by role, name
   `) as UserRow[];
@@ -28,15 +29,16 @@ export default async function AdminUsersPage() {
       <AddUserForm />
 
       <div className="mt-8 overflow-x-auto">
-        <table className="w-full min-w-[640px] text-left text-sm">
+        <table className="w-full min-w-[860px] text-left text-sm">
           <thead>
             <tr className="border-b border-black/10 text-xs uppercase tracking-wide text-zinc-500">
               <th className="py-2 pr-4">Name</th>
               <th className="py-2 pr-4">Email</th>
-              <th className="py-2 pr-4">Phone code</th>
+              <th className="py-2 pr-4">Username</th>
               <th className="py-2 pr-4">Role</th>
               <th className="py-2 pr-4">Home market</th>
-              <th className="py-2">All-star</th>
+              <th className="py-2 pr-4">All-star</th>
+              <th className="py-2"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-black/5">
@@ -44,17 +46,20 @@ export default async function AdminUsersPage() {
               <tr key={u.id}>
                 <td className="py-2 pr-4 font-medium text-zinc-950">{u.name}</td>
                 <td className="py-2 pr-4 text-zinc-600">{u.email}</td>
-                <td className="py-2 pr-4 text-zinc-600">{u.phone_last4}</td>
+                <td className="py-2 pr-4 text-zinc-600">{u.username ?? "—"}</td>
                 <td className="py-2 pr-4 capitalize text-zinc-600">{u.role}</td>
                 <td className="py-2 pr-4 text-zinc-600">{u.home_market ?? "—"}</td>
-                <td className="py-2">
+                <td className="py-2 pr-4">
                   {u.is_all_star && <span className="text-[#DA1717]">★</span>}
+                </td>
+                <td className="py-2">
+                  <ResetPasswordButton userId={u.id} />
                 </td>
               </tr>
             ))}
             {users.length === 0 && (
               <tr>
-                <td colSpan={6} className="py-4 text-center text-zinc-500">
+                <td colSpan={7} className="py-4 text-center text-zinc-500">
                   No users yet.
                 </td>
               </tr>

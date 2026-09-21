@@ -1,35 +1,53 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import bcrypt from "bcryptjs";
 import { sql } from "@/lib/db";
 import { createSession, type Role } from "@/lib/session";
+import { createAdminSession } from "@/lib/admin-auth";
 import { roleHomePath } from "@/lib/roles";
 
 export type LoginState = { error?: string };
+
+const MISMATCH_ERROR = "That username and password don't match.";
+
+// Compared against when the username doesn't exist, so a miss costs the same
+// as a wrong password.
+const DUMMY_HASH =
+  "$2b$10$erxkP9WAM02iF4N4uQHv2eEWT0P.9jnLbaTLgDESnPVkACYh3NxPi";
 
 export async function login(
   _prevState: LoginState,
   formData: FormData
 ): Promise<LoginState> {
-  const email = String(formData.get("email") ?? "")
+  const username = String(formData.get("username") ?? "")
     .trim()
     .toLowerCase();
-  const phoneLast4 = String(formData.get("phoneLast4") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
 
-  if (!email || !phoneLast4) {
-    return { error: "That email and code don't match." };
+  if (!username || !password) {
+    return { error: MISMATCH_ERROR };
   }
 
   const rows = (await sql`
-    select id, role from users
-    where lower(email) = ${email} and phone_last4 = ${phoneLast4} and role != 'admin'
-  `) as { id: number; role: Role }[];
+    select id, role, password_hash from users
+    where lower(username) = ${username}
+  `) as { id: number; role: Role; password_hash: string | null }[];
 
   const user = rows[0];
-  if (!user) {
-    return { error: "That email and code don't match." };
+  const matches = await bcrypt.compare(
+    password,
+    user?.password_hash ?? DUMMY_HASH
+  );
+  if (!user || !user.password_hash || !matches) {
+    return { error: MISMATCH_ERROR };
   }
 
   await createSession(user.id);
+  if (user.role === "admin") {
+    // Admin pages are guarded by their own cookie, so set it alongside the
+    // user session or /admin/shows would bounce back to /admin/login.
+    await createAdminSession();
+  }
   redirect(roleHomePath(user.role));
 }

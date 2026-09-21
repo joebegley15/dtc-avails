@@ -11,21 +11,22 @@ export function LoginForm() {
   return (
     <form action={formAction} className="mt-6 flex flex-col gap-3">
       <input
-        type="email"
-        name="email"
-        placeholder="Email"
+        type="text"
+        name="username"
+        placeholder="Username"
         required
         autoFocus
+        autoCapitalize="none"
+        autoComplete="username"
+        spellCheck={false}
         className="rounded-md border border-black/10 bg-transparent px-3 py-2 text-sm text-zinc-950 outline-none focus:border-[#DA1717]"
       />
       <input
-        type="text"
-        name="phoneLast4"
-        placeholder="Last 4 digits of your phone"
+        type="password"
+        name="password"
+        placeholder="Password"
         required
-        inputMode="numeric"
-        pattern="[0-9]{4}"
-        maxLength={4}
+        autoComplete="current-password"
         className="rounded-md border border-black/10 bg-transparent px-3 py-2 text-sm text-zinc-950 outline-none focus:border-[#DA1717]"
       />
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}

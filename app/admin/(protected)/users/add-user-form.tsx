@@ -33,12 +33,21 @@ export function AddUserForm() {
         className={inputClass}
       />
       <input
-        name="phoneLast4"
-        placeholder="Last 4 of phone"
+        name="username"
+        placeholder="Username"
         required
-        inputMode="numeric"
-        pattern="[0-9]{4}"
-        maxLength={4}
+        autoCapitalize="none"
+        autoComplete="off"
+        spellCheck={false}
+        className={inputClass}
+      />
+      <input
+        name="password"
+        type="password"
+        placeholder="Starting password (min 6 characters)"
+        required
+        minLength={6}
+        autoComplete="new-password"
         className={inputClass}
       />
       <select name="role" defaultValue="producer" className={inputClass}>
