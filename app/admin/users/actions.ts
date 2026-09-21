@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { sql } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { DEFAULT_PASSWORD, requireAdmin } from "@/lib/auth";
 import type { Role } from "@/lib/session";
 
 const MIN_PASSWORD_LENGTH = 6;
@@ -112,4 +112,42 @@ export async function resetPassword(
   }
 
   return { success: "Password updated." };
+}
+
+export type ResetToDefaultResult = { ok: boolean; message: string };
+
+/**
+ * Sets the user's password back to DEFAULT_PASSWORD and makes them choose a
+ * new one at their next login. Never applies to admins.
+ */
+export async function resetToDefault(
+  userId: number
+): Promise<ResetToDefaultResult> {
+  await requireAdmin();
+
+  if (typeof userId !== "number" || !Number.isInteger(userId) || userId <= 0) {
+    return { ok: false, message: "Invalid user." };
+  }
+
+  const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
+  const updated = (await sql`
+    update users
+    set password_hash = ${passwordHash}, must_change_password = true
+    where id = ${userId} and role <> 'admin'
+    returning id
+  `) as { id: number }[];
+
+  if (updated.length === 0) {
+    const found = await sql`select role from users where id = ${userId}`;
+    return {
+      ok: false,
+      message:
+        found.length === 0
+          ? "User not found."
+          : "Admins can't be reset to the default password.",
+    };
+  }
+
+  revalidatePath("/admin/users");
+  return { ok: true, message: "Reset. They'll choose a new password at next login." };
 }

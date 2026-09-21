@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/session";
+import { requireUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import {
   ProducerShowsView,
@@ -55,8 +55,8 @@ function cityPart(location: string): string {
 export default async function ProducerPage({
   searchParams,
 }: PageProps<"/producer">) {
-  const user = await getCurrentUser();
-  if (!user || (user.role !== "producer" && user.role !== "admin")) {
+  const user = await requireUser();
+  if (user.role !== "producer" && user.role !== "admin") {
     redirect("/login");
   }
   const isAdmin = user.role === "admin";

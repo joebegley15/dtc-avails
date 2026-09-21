@@ -29,9 +29,14 @@ export async function login(
   }
 
   const rows = (await sql`
-    select id, role, password_hash from users
+    select id, role, password_hash, must_change_password from users
     where lower(username) = ${username}
-  `) as { id: number; role: Role; password_hash: string | null }[];
+  `) as {
+    id: number;
+    role: Role;
+    password_hash: string | null;
+    must_change_password: boolean;
+  }[];
 
   const user = rows[0];
   const matches = await bcrypt.compare(
@@ -43,5 +48,5 @@ export async function login(
   }
 
   await createSession(user.id);
-  redirect(roleHomePath(user.role));
+  redirect(user.must_change_password ? "/change-password" : roleHomePath(user.role));
 }

@@ -38,6 +38,14 @@ export default async function BulkUploadPage() {
         </ul>
       </div>
 
+      <p className="mt-4 text-sm text-zinc-500">
+        Importing users instead of shows?{" "}
+        <Link href="/admin/users/import" className="underline hover:text-zinc-950">
+          Import users
+        </Link>
+        .
+      </p>
+
       <BulkUploadForm />
     </div>
   );

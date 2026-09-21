@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "migrate:show-producers": "node scripts/migrate-show-producers.mjs",
-    "migrate:passwords": "node scripts/migrate-passwords.mjs"
+    "migrate:passwords": "node scripts/migrate-passwords.mjs",
+    "migrate:must-change-password": "node scripts/migrate-must-change-password.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

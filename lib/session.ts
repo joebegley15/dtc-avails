@@ -12,6 +12,7 @@ export type CurrentUser = {
   name: string;
   role: Role;
   is_all_star: boolean;
+  must_change_password: boolean;
 };
 
 function getAuthSecret(): string {
@@ -76,7 +77,8 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   if (userId === null) return null;
 
   const rows = (await sql`
-    select id, name, role, is_all_star from users where id = ${userId}
+    select id, name, role, is_all_star, must_change_password
+    from users where id = ${userId}
   `) as CurrentUser[];
 
   return rows[0] ?? null;

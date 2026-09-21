@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { AddUserForm } from "./add-user-form";
 import { ResetPasswordButton } from "./reset-password-button";
+import { ResetToDefaultButton } from "./reset-to-default-button";
 
 type UserRow = {
   id: number;
@@ -24,10 +26,20 @@ export default async function AdminUsersPage() {
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-10">
-      <h1 className="text-lg font-semibold text-zinc-950">Users</h1>
-      <p className="mt-1 text-sm text-zinc-600">
-        Add producers, comics, and admins here.
-      </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-lg font-semibold text-zinc-950">Users</h1>
+          <p className="mt-1 text-sm text-zinc-600">
+            Add producers, comics, and admins here.
+          </p>
+        </div>
+        <Link
+          href="/admin/users/import"
+          className="rounded-md bg-[#DA1717] px-4 py-2 text-sm font-medium text-white"
+        >
+          Import users
+        </Link>
+      </div>
 
       <AddUserForm />
 
@@ -56,7 +68,10 @@ export default async function AdminUsersPage() {
                   {u.is_all_star && <span className="text-[#DA1717]">★</span>}
                 </td>
                 <td className="py-2">
-                  <ResetPasswordButton userId={u.id} />
+                  <div className="flex flex-col gap-1">
+                    <ResetPasswordButton userId={u.id} />
+                    {u.role !== "admin" && <ResetToDefaultButton userId={u.id} />}
+                  </div>
                 </td>
               </tr>
             ))}
