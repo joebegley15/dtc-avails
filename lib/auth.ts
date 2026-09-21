@@ -1,30 +1,19 @@
-import { createHmac, timingSafeEqual } from "crypto";
+import { redirect } from "next/navigation";
+import { getCurrentUser, type CurrentUser } from "./session";
 
-export const AUTH_COOKIE_NAME = "dtc_upload_session";
-export const AUTH_COOKIE_PATH = "/upload";
-
-function getPassword(): string {
-  const password = process.env.UPLOAD_PASSWORD;
-  if (!password) {
-    throw new Error("UPLOAD_PASSWORD environment variable is not set");
+/**
+ * Gate for everything under /admin. Call it at the top of every admin layout,
+ * page, and server action: layouts don't re-run on client navigation, and
+ * server actions are reachable by direct POST, so each entry point must check
+ * for itself.
+ */
+export async function requireAdmin(): Promise<CurrentUser> {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/login");
   }
-  return password;
-}
-
-export function checkPassword(password: string): boolean {
-  return password === getPassword();
-}
-
-export function getSessionToken(): string {
-  return createHmac("sha256", getPassword())
-    .update("dtc-upload-portal")
-    .digest("hex");
-}
-
-export function isValidSessionToken(token: string | undefined): boolean {
-  if (!token) return false;
-  const expected = getSessionToken();
-  const a = Buffer.from(token);
-  const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
+  if (user.role !== "admin") {
+    redirect("/");
+  }
+  return user;
 }

@@ -1,16 +1,13 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
-import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { AppHeader } from "@/components/app-header";
 
 export default async function ProducerLayout({
   children,
 }: LayoutProps<"/producer">) {
-  if (!(await isAdminAuthenticated())) {
-    const user = await getCurrentUser();
-    if (!user || user.role !== "producer") {
-      redirect("/login");
-    }
+  const user = await getCurrentUser();
+  if (!user || (user.role !== "producer" && user.role !== "admin")) {
+    redirect("/login");
   }
 
   return (

@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
-import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { sql } from "@/lib/db";
 import {
   ProducerShowsView,
@@ -54,16 +53,12 @@ function cityPart(location: string): string {
 }
 
 export default async function ProducerPage() {
-  const isAdmin = await isAdminAuthenticated();
-
-  let producerUserId: number | null = null;
-  if (!isAdmin) {
-    const user = await getCurrentUser();
-    if (!user || user.role !== "producer") {
-      redirect("/login");
-    }
-    producerUserId = user.id;
+  const user = await getCurrentUser();
+  if (!user || (user.role !== "producer" && user.role !== "admin")) {
+    redirect("/login");
   }
+  const isAdmin = user.role === "admin";
+  const producerUserId = isAdmin ? null : user.id;
 
   const showRows = (isAdmin
     ? await sql`

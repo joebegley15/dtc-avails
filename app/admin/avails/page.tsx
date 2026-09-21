@@ -1,4 +1,5 @@
 import { sql } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
 import { formatShowDateTime } from "@/lib/format";
 import { DownloadCsvButton } from "./download-csv-button";
 
@@ -15,6 +16,8 @@ type ShowRow = {
 type AvailRow = { user_id: number; show_id: number; available: boolean };
 
 export default async function AdminAvailsPage() {
+  await requireAdmin();
+
   const comics = (await sql`
     select id, name, email from users where role = 'comic' order by name
   `) as ComicRow[];

@@ -1,17 +1,10 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { sql } from "@/lib/db";
-import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { requireAdmin } from "@/lib/auth";
 import type { Role } from "@/lib/session";
-
-async function requireAdmin() {
-  if (!(await isAdminAuthenticated())) {
-    redirect("/admin/login");
-  }
-}
 
 const MIN_PASSWORD_LENGTH = 6;
 // bcrypt only uses the first 72 bytes; reject longer input instead of

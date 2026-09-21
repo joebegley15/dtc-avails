@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { sql } from "@/lib/db";
 import { createSession, type Role } from "@/lib/session";
-import { createAdminSession } from "@/lib/admin-auth";
 import { roleHomePath } from "@/lib/roles";
 
 export type LoginState = { error?: string };
@@ -44,10 +43,5 @@ export async function login(
   }
 
   await createSession(user.id);
-  if (user.role === "admin") {
-    // Admin pages are guarded by their own cookie, so set it alongside the
-    // user session or /admin/shows would bounce back to /admin/login.
-    await createAdminSession();
-  }
   redirect(roleHomePath(user.role));
 }

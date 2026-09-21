@@ -1,4 +1,5 @@
 import { sql } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
 import { AddUserForm } from "./add-user-form";
 import { ResetPasswordButton } from "./reset-password-button";
 
@@ -13,6 +14,8 @@ type UserRow = {
 };
 
 export default async function AdminUsersPage() {
+  await requireAdmin();
+
   const users = (await sql`
     select id, name, email, username, role, home_market, is_all_star
     from users
