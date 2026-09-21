@@ -52,12 +52,21 @@ function cityPart(location: string): string {
   return location.split(",")[0]?.trim().toLowerCase() ?? "";
 }
 
-export default async function ProducerPage() {
+export default async function ProducerPage({
+  searchParams,
+}: PageProps<"/producer">) {
   const user = await getCurrentUser();
   if (!user || (user.role !== "producer" && user.role !== "admin")) {
     redirect("/login");
   }
   const isAdmin = user.role === "admin";
+
+  // ?producer=<id> preselects a producer in the admin view. Ignored otherwise.
+  const requested = (await searchParams).producer;
+  const initialProducerId =
+    isAdmin && typeof requested === "string" && /^\d+$/.test(requested)
+      ? Number(requested)
+      : null;
   const producerUserId = isAdmin ? null : user.id;
 
   const showRows = (isAdmin
@@ -164,9 +173,17 @@ export default async function ProducerPage() {
 
   const producers: ProducerOption[] = isAdmin
     ? ((await sql`
-        select id, name from users where role = 'producer' order by name
+        select id, name from users where role in ('producer', 'admin') order by name
       `) as ProducerOption[])
     : [];
 
-  return <ProducerShowsView shows={shows} producers={producers} isAdmin={isAdmin} />;
+  return (
+    <ProducerShowsView
+      key={initialProducerId ?? "all"}
+      shows={shows}
+      producers={producers}
+      isAdmin={isAdmin}
+      initialProducerId={initialProducerId}
+    />
+  );
 }

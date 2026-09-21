@@ -216,7 +216,19 @@ function ShowRow({
       <td className="px-2 py-2 text-zinc-700">{show.venue}</td>
       <td className="px-2 py-2 text-zinc-600">{show.capacity ?? "—"}</td>
       <td className="px-2 py-2 text-zinc-600">
-        {show.producer_names.length > 0 ? show.producer_names.join(", ") : "—"}
+        {show.producer_ids.length > 0
+          ? show.producer_ids.map((id, i) => (
+              <span key={id}>
+                {i > 0 && ", "}
+                <Link
+                  href={`/producer?producer=${id}`}
+                  className="underline decoration-zinc-300 underline-offset-2 hover:text-[#DA1717]"
+                >
+                  {show.producer_names[i]}
+                </Link>
+              </span>
+            ))
+          : "—"}
       </td>
       <td className="px-2 py-2">
         <button

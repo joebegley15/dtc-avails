@@ -141,12 +141,18 @@ export function ProducerShowsView({
   shows,
   producers,
   isAdmin,
+  initialProducerId = null,
 }: {
   shows: ShowCardData[];
   producers: ProducerOption[];
   isAdmin: boolean;
+  initialProducerId?: number | null;
 }) {
-  const [selectedProducerId, setSelectedProducerId] = useState<string>("all");
+  const [selectedProducerId, setSelectedProducerId] = useState<string>(() =>
+    initialProducerId !== null && producers.some((p) => p.id === initialProducerId)
+      ? String(initialProducerId)
+      : "all"
+  );
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
 
   const filteredShows = useMemo(() => {
