@@ -11,9 +11,10 @@ export function LoginForm() {
   return (
     <form action={formAction} className="mt-6 flex flex-col gap-3">
       <input
-        type="text"
-        name="username"
-        placeholder="Username"
+        type="email"
+        name="email"
+        defaultValue={state.email}
+        placeholder="Email"
         required
         autoFocus
         autoCapitalize="none"

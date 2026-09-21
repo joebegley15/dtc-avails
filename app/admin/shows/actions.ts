@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import bcrypt from "bcryptjs";
 import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import {
@@ -132,4 +133,60 @@ export async function deleteShow(showId: number): Promise<ShowActionResult> {
 
   revalidatePath("/admin/shows");
   return { ok: true };
+}
+
+// A valid bcrypt hash to compare against when the account has no password, so
+// the response time doesn't reveal that.
+const DUMMY_HASH =
+  "$2b$10$erxkP9WAM02iF4N4uQHv2eEWT0P.9jnLbaTLgDESnPVkACYh3NxPi";
+
+/** True only if `password` is the signed-in admin's own password. */
+async function isOwnPassword(userId: number, password: unknown): Promise<boolean> {
+  if (typeof password !== "string" || password === "") return false;
+
+  const rows = (await sql`
+    select password_hash from users where id = ${userId}
+  `) as { password_hash: string | null }[];
+  const hash = rows[0]?.password_hash ?? null;
+
+  const matches = await bcrypt.compare(password, hash ?? DUMMY_HASH);
+  return hash !== null && matches;
+}
+
+export type PasswordCheckResult = { ok: boolean; error?: string };
+
+/** Step 1 of "Delete all shows": is this the admin's own password? */
+export async function checkPasswordForDeleteAll(
+  password: string
+): Promise<PasswordCheckResult> {
+  const user = await requireAdmin();
+
+  return (await isOwnPassword(user.id, password))
+    ? { ok: true }
+    : { ok: false, error: "Incorrect password." };
+}
+
+export type DeleteAllResult =
+  | { ok: true; deleted: number }
+  | { ok: false; error: string };
+
+/**
+ * Step 2: deletes every show, past and upcoming. Their producer assignments
+ * and every avail submitted for them go too, via ON DELETE CASCADE. The
+ * password is checked again here; the step-1 check is only for feedback.
+ */
+export async function deleteAllShows(password: string): Promise<DeleteAllResult> {
+  const user = await requireAdmin();
+
+  if (!(await isOwnPassword(user.id, password))) {
+    return { ok: false, error: "Incorrect password." };
+  }
+
+  const rows = (await sql`
+    with gone as (delete from shows returning id)
+    select count(*)::int as n from gone
+  `) as { n: number }[];
+
+  revalidatePath("/admin/shows");
+  return { ok: true, deleted: rows[0]?.n ?? 0 };
 }

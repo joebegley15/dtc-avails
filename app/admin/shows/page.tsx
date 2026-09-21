@@ -19,7 +19,7 @@ export default async function AdminShowsPage({
   const imported = toCount(params.imported);
   const skipped = toCount(params.skipped);
 
-  const [shows, producers] = await Promise.all([
+  const [shows, producers, availsCount] = await Promise.all([
     sql`
       select
         s.id, s.city, s.neighborhood,
@@ -35,6 +35,10 @@ export default async function AdminShowsPage({
       order by s.show_date, s.show_time, s.id
     ` as unknown as Promise<ShowRowData[]>,
     loadProducerOptions(),
+    // Every avail belongs to a show, so all of them go with "Delete all shows".
+    sql`select count(*)::int as n from avails`.then(
+      (rows) => (rows[0] as { n: number }).n
+    ),
   ]);
 
   return (
@@ -48,6 +52,7 @@ export default async function AdminShowsPage({
       <ShowsManager
         shows={shows}
         producers={producers}
+        availsCount={availsCount}
         serverToday={new Date().toISOString().slice(0, 10)}
       />
     </div>

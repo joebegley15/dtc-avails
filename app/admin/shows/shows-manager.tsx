@@ -5,6 +5,7 @@ import { useMemo, useState, useSyncExternalStore, useTransition } from "react";
 import { formatShowDate, formatShowTime } from "@/lib/format";
 import type { ProducerOption } from "@/lib/show-parsing";
 import { deleteShow, toggleAllStar } from "./actions";
+import { DeleteAllShows } from "./delete-all-shows";
 import { ShowEditRow } from "./show-edit-row";
 import type { ShowRowData } from "./types";
 
@@ -19,10 +20,12 @@ function localToday(): string {
 export function ShowsManager({
   shows,
   producers,
+  availsCount,
   serverToday,
 }: {
   shows: ShowRowData[];
   producers: ProducerOption[];
+  availsCount: number;
   serverToday: string;
 }) {
   const [filter, setFilter] = useState("");
@@ -98,10 +101,13 @@ export function ShowsManager({
         </Link>
       </div>
 
-      <p className="mt-4 text-sm text-zinc-600">
-        {upcomingCount} upcoming show{upcomingCount === 1 ? "" : "s"}
-        {showPast && ` · ${pastCount} past`}
-      </p>
+      <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
+        <p className="text-sm text-zinc-600">
+          {upcomingCount} upcoming show{upcomingCount === 1 ? "" : "s"}
+          {showPast && ` · ${pastCount} past`}
+        </p>
+        <DeleteAllShows total={shows.length} availsCount={availsCount} />
+      </div>
 
       <table className="mt-2 w-full text-left text-sm">
         <thead>

@@ -19,7 +19,7 @@ export default async function LoginPage() {
       <main className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center px-4 py-10">
         <h1 className="text-lg font-semibold text-zinc-950">Sign in</h1>
         <p className="mt-1 text-sm text-zinc-600">
-          Enter your username and password.
+          Enter your email and password.
         </p>
         <LoginForm />
       </main>

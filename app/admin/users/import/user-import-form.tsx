@@ -294,7 +294,7 @@ function ImportResult({
       {result.newUsers.length > 0 && (
         <>
           <p className="mt-4 text-sm text-zinc-700">
-            New users log in with their username and{" "}
+            New users log in with their email and{" "}
             <code className="rounded bg-zinc-100 px-1 py-0.5 text-zinc-900">
               {defaultPassword}
             </code>
