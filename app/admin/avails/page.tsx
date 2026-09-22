@@ -29,7 +29,7 @@ export default async function AdminAvailsPage() {
       is_all_star
     from shows
     where (show_date, show_time) >= (current_date, current_time)
-    order by show_date, show_time
+    order by show_date, show_time, id
   `) as ShowRow[];
 
   const showIds = shows.map((s) => s.id);

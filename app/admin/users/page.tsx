@@ -33,12 +33,20 @@ export default async function AdminUsersPage() {
             Add producers, comics, and admins here.
           </p>
         </div>
-        <Link
-          href="/admin/users/import"
-          className="rounded-md bg-[#DA1717] px-4 py-2 text-sm font-medium text-white"
-        >
-          Import users
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin/users/invite"
+            className="rounded-md border border-black/10 px-4 py-2 text-sm font-medium text-zinc-800 hover:border-zinc-950"
+          >
+            Invite a user
+          </Link>
+          <Link
+            href="/admin/users/import"
+            className="rounded-md bg-[#DA1717] px-4 py-2 text-sm font-medium text-white"
+          >
+            Import users
+          </Link>
+        </div>
       </div>
 
       <AddUserForm />

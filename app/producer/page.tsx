@@ -77,7 +77,7 @@ export default async function ProducerPage({
         left join users u on u.id = sp.producer_id
         where (s.show_date, s.show_time) >= (current_date, current_time)
         group by s.id
-        order by s.show_date, s.show_time
+        order by s.show_date, s.show_time, s.id
       `
     : await sql`
         select ${sql.unsafe(SHOW_COLUMNS)}
@@ -90,7 +90,7 @@ export default async function ProducerPage({
             where sp2.show_id = s.id and sp2.producer_id = ${producerUserId}
           )
         group by s.id
-        order by s.show_date, s.show_time
+        order by s.show_date, s.show_time, s.id
       `) as unknown as ShowRow[];
 
   const showIds = showRows.map((r) => r.id);

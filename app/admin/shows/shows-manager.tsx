@@ -29,6 +29,8 @@ export function ShowsManager({
   serverToday: string;
 }) {
   const [filter, setFilter] = useState("");
+  const [regionFilter, setRegionFilter] = useState("all");
+  const [producerFilter, setProducerFilter] = useState("all");
   const [showPast, setShowPast] = useState(false);
   const [editingState, setEditingState] = useState<{
     target: number | "new";
@@ -49,14 +51,33 @@ export function ShowsManager({
   // first paint, so hydration matches.
   const today = useSyncExternalStore(noopSubscribe, localToday, () => serverToday);
 
+  // Region options are the cities actually in the list, so every choice
+  // narrows the table to at least one row.
+  const regions = useMemo(
+    () => [...new Set(shows.map((s) => s.city.trim()))].sort((a, b) => a.localeCompare(b)),
+    [shows]
+  );
+  const producerOptions = useMemo(() => {
+    const byId = new Map<number, string>();
+    for (const s of shows) {
+      s.producer_ids.forEach((id, i) => byId.set(id, s.producer_names[i]));
+    }
+    return [...byId.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [shows]);
+
   const { visible, upcomingCount, pastCount } = useMemo(() => {
     const q = filter.trim().toLowerCase();
+    const producerId = producerFilter === "all" ? null : Number(producerFilter);
     const matches = shows.filter(
       (s) =>
-        !q ||
-        s.city.toLowerCase().includes(q) ||
-        s.venue.toLowerCase().includes(q) ||
-        s.producer_names.some((name) => name.toLowerCase().includes(q))
+        (!q ||
+          s.city.toLowerCase().includes(q) ||
+          s.venue.toLowerCase().includes(q) ||
+          s.producer_names.some((name) => name.toLowerCase().includes(q))) &&
+        (regionFilter === "all" || s.city.trim() === regionFilter) &&
+        (producerId === null || s.producer_ids.includes(producerId))
     );
     const upcoming = matches.filter((s) => s.show_date >= today);
     return {
@@ -64,7 +85,7 @@ export function ShowsManager({
       upcomingCount: upcoming.length,
       pastCount: matches.length - upcoming.length,
     };
-  }, [shows, filter, showPast, today]);
+  }, [shows, filter, regionFilter, producerFilter, showPast, today]);
 
   return (
     <div className="mt-6">
@@ -77,6 +98,32 @@ export function ShowsManager({
           aria-label="Filter shows"
           className="w-72 rounded-md border border-black/10 bg-transparent px-3 py-2 text-sm text-zinc-950 outline-none focus:border-[#DA1717]"
         />
+        <select
+          value={regionFilter}
+          onChange={(e) => setRegionFilter(e.target.value)}
+          aria-label="Filter by region"
+          className="rounded-md border border-black/10 bg-white px-3 py-2 text-sm text-zinc-950 outline-none focus:border-[#DA1717]"
+        >
+          <option value="all">All regions</option>
+          {regions.map((r) => (
+            <option key={r} value={r}>
+              {r}
+            </option>
+          ))}
+        </select>
+        <select
+          value={producerFilter}
+          onChange={(e) => setProducerFilter(e.target.value)}
+          aria-label="Filter by producer"
+          className="rounded-md border border-black/10 bg-white px-3 py-2 text-sm text-zinc-950 outline-none focus:border-[#DA1717]"
+        >
+          <option value="all">All producers</option>
+          {producerOptions.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
         <label className="flex items-center gap-2 text-sm text-zinc-700">
           <input
             type="checkbox"
