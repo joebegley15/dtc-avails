@@ -33,7 +33,13 @@ export default async function BulkUploadPage() {
           <li>Time: 20:00, 8:00 PM, or 8 PM.</li>
           <li>
             Producer: a producer or admin&apos;s name as it appears in Users.
-            Separate several with &quot;;&quot;.
+            Separate several with &quot;;&quot;. A first initial and last name
+            (&quot;T. Truman&quot;) or a small spelling mistake still finds
+            the right person; the preview shows each of those matches so you
+            can check it.
+          </li>
+          <li>
+            In the preview, uncheck any show you don&apos;t want to import.
           </li>
         </ul>
       </div>

@@ -21,9 +21,14 @@ const KNOWN_HEADERS = [
   "capacity",
 ] as const;
 
+// Only rows that would actually be imported can be checked or unchecked.
+const isSelectable = (r: PreviewRow) => r.show !== null && !r.duplicate;
+
 export function BulkUploadForm() {
   const [csvRows, setCsvRows] = useState<CsvRow[] | null>(null);
   const [preview, setPreview] = useState<PreviewRow[] | null>(null);
+  // Row numbers the admin has unchecked. Everything else importable is in.
+  const [excluded, setExcluded] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
   // Changing the key remounts the file input, which clears its selection.
   const [inputKey, setInputKey] = useState(0);
@@ -32,6 +37,7 @@ export function BulkUploadForm() {
   function reset() {
     setCsvRows(null);
     setPreview(null);
+    setExcluded(new Set());
     setError(null);
     setInputKey((k) => k + 1);
   }
@@ -39,6 +45,7 @@ export function BulkUploadForm() {
   function handleFile(file: File) {
     setCsvRows(null);
     setPreview(null);
+    setExcluded(new Set());
     setError(null);
 
     Papa.parse<Record<string, string>>(file, {
@@ -81,12 +88,30 @@ export function BulkUploadForm() {
     if (!csvRows) return;
     startTransition(async () => {
       // On success the action redirects to /admin/shows.
-      const result = await importShows(csvRows);
+      const result = await importShows(csvRows, [...excluded]);
       if (result?.error) setError(result.error);
     });
   }
 
-  const ready = preview?.filter((r) => r.show && !r.duplicate).length ?? 0;
+  function toggleRow(row: number) {
+    setExcluded((prev) => {
+      const next = new Set(prev);
+      if (next.has(row)) next.delete(row);
+      else next.add(row);
+      return next;
+    });
+  }
+
+  const selectable = preview?.filter(isSelectable) ?? [];
+  const selectedCount = selectable.filter((r) => !excluded.has(r.row)).length;
+  const allSelected = selectable.length > 0 && selectedCount === selectable.length;
+  const someSelected = selectedCount > 0 && !allSelected;
+
+  function toggleAll() {
+    setExcluded(allSelected ? new Set(selectable.map((r) => r.row)) : new Set());
+  }
+
+  const ready = selectable.length;
   const errorCount = preview?.filter((r) => r.errors.length > 0).length ?? 0;
   const duplicateCount = preview?.filter((r) => r.duplicate).length ?? 0;
 
@@ -109,10 +134,12 @@ export function BulkUploadForm() {
             <button
               type="button"
               onClick={handleImport}
-              disabled={pending || ready === 0}
+              disabled={pending || selectedCount === 0}
               className="rounded-md bg-[#DA1717] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
-              {pending ? "Working…" : `Import ${ready} show${ready === 1 ? "" : "s"}`}
+              {pending
+                ? "Working…"
+                : `Import ${selectedCount} show${selectedCount === 1 ? "" : "s"}`}
             </button>
             <button
               type="button"
@@ -136,11 +163,28 @@ export function BulkUploadForm() {
           <p className="mt-6 text-sm font-medium text-zinc-800">
             {ready} ready, {errorCount} error{errorCount === 1 ? "" : "s"},{" "}
             {duplicateCount} duplicate{duplicateCount === 1 ? "" : "s"}
+            <span className="font-normal text-zinc-500">
+              {" "}
+              · {selectedCount} selected to import
+            </span>
           </p>
 
           <table className="mt-2 w-full text-left text-sm">
             <thead>
               <tr className="border-b border-black/10 text-xs uppercase tracking-wide text-zinc-500">
+                <th className="px-2 py-2">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all importable shows"
+                    checked={allSelected}
+                    disabled={ready === 0 || pending}
+                    ref={(el) => {
+                      if (el) el.indeterminate = someSelected;
+                    }}
+                    onChange={toggleAll}
+                    className="h-4 w-4 accent-[#DA1717]"
+                  />
+                </th>
                 <th className="px-2 py-2">Row</th>
                 <th className="px-2 py-2">Status</th>
                 <th className="px-2 py-2">City</th>
@@ -154,7 +198,13 @@ export function BulkUploadForm() {
             </thead>
             <tbody className="divide-y divide-black/5">
               {preview.map((r) => (
-                <PreviewTableRow key={r.row} row={r} />
+                <PreviewTableRow
+                  key={r.row}
+                  row={r}
+                  selected={!excluded.has(r.row)}
+                  disabled={pending}
+                  onToggle={() => toggleRow(r.row)}
+                />
               ))}
             </tbody>
           </table>
@@ -164,18 +214,45 @@ export function BulkUploadForm() {
   );
 }
 
-function PreviewTableRow({ row }: { row: PreviewRow }) {
+function PreviewTableRow({
+  row,
+  selected,
+  disabled,
+  onToggle,
+}: {
+  row: PreviewRow;
+  selected: boolean;
+  disabled: boolean;
+  onToggle: () => void;
+}) {
   const { raw, show } = row;
   const hasErrors = row.errors.length > 0;
+  const selectable = isSelectable(row);
+  const unchecked = selectable && !selected;
 
   const rowClass = hasErrors
     ? "bg-red-50 align-top"
     : row.duplicate
       ? "bg-zinc-100 align-top text-zinc-400"
-      : "align-top text-zinc-800";
+      : unchecked
+        ? "align-top text-zinc-400"
+        : "align-top text-zinc-800";
+
+  // Names that weren't an exact match, so the admin can check them.
+  const notes = row.producerMatches.filter((m) => m.how !== "exact");
 
   return (
     <tr className={rowClass}>
+      <td className="px-2 py-2">
+        <input
+          type="checkbox"
+          aria-label={`Import row ${row.row}`}
+          checked={selectable && selected}
+          disabled={!selectable || disabled}
+          onChange={onToggle}
+          className="h-4 w-4 accent-[#DA1717]"
+        />
+      </td>
       <td className="px-2 py-2">{row.row}</td>
       <td className="px-2 py-2">
         {hasErrors ? (
@@ -189,6 +266,8 @@ function PreviewTableRow({ row }: { row: PreviewRow }) {
             Duplicate, will skip
             {row.duplicate === "in-file" && " (repeated in this file)"}
           </span>
+        ) : unchecked ? (
+          <span>Unchecked, won&apos;t import</span>
         ) : (
           <span className="font-medium text-emerald-700">Ready</span>
         )}
@@ -205,6 +284,19 @@ function PreviewTableRow({ row }: { row: PreviewRow }) {
       <td className="px-2 py-2">{show ? (show.capacity ?? "—") : raw.capacity}</td>
       <td className="px-2 py-2">
         {show ? row.producerNames.join(", ") : raw.producer}
+        {notes.map((m) => (
+          <p
+            key={m.input}
+            className={`mt-0.5 text-xs ${
+              m.how === "spelling" ? "text-amber-700" : "text-zinc-500"
+            }`}
+          >
+            &ldquo;{m.input}&rdquo; → {m.name}{" "}
+            {m.how === "initial"
+              ? "(matched by first initial)"
+              : "(similar spelling, please check)"}
+          </p>
+        ))}
       </td>
     </tr>
   );

@@ -9,6 +9,7 @@ import {
   splitProducerNames,
   validateShowInput,
   type ParsedShow,
+  type ProducerMatch,
 } from "@/lib/show-parsing";
 import {
   insertShowQuery,
@@ -36,6 +37,8 @@ export type PreviewRow = {
   show: ParsedShow | null;
   /** Producer names as matched in the database. */
   producerNames: string[];
+  /** How each name in the CSV cell was matched (exact, initial, spelling). */
+  producerMatches: ProducerMatch[];
   errors: string[];
   duplicate: "existing" | "in-file" | null;
 };
@@ -106,6 +109,7 @@ async function validateRows(input: unknown): Promise<ValidateResult> {
       raw: raws[i],
       show: v.show,
       producerNames: v.producerNames,
+      producerMatches: v.producerMatches,
       errors: v.errors,
       duplicate,
     };
@@ -121,22 +125,38 @@ export async function validateShows(rows: CsvRow[]): Promise<ValidateResult> {
 }
 
 /**
- * Validates again on the server, inserts every valid non-duplicate show and
- * its producers in one transaction, then redirects to /admin/shows.
+ * Validates again on the server, inserts every valid non-duplicate show that
+ * wasn't unchecked (and its producers) in one transaction, then redirects to
+ * /admin/shows.
+ *
+ * The full row list is validated exactly as it was previewed; `excludedRows`
+ * (1-based row numbers) can only remove shows from the import, never add.
  */
 export async function importShows(
-  rows: CsvRow[]
+  rows: CsvRow[],
+  excludedRows: number[] = []
 ): Promise<{ error: string } | undefined> {
   await requireAdmin();
 
   const result = await validateRows(rows);
   if ("error" in result) return result;
 
-  const toImport = result.rows.flatMap((r) =>
-    r.show && !r.duplicate ? [r.show] : []
+  const excluded = new Set(
+    Array.isArray(excludedRows)
+      ? excludedRows.filter((n): n is number => Number.isInteger(n))
+      : []
+  );
+  const importable = result.rows.filter((r) => r.show && !r.duplicate);
+  const toImport = importable.flatMap((r) =>
+    r.show && !excluded.has(r.row) ? [r.show] : []
   );
   if (toImport.length === 0) {
-    return { error: "There are no valid shows to import." };
+    return {
+      error:
+        importable.length > 0
+          ? "No shows are selected to import."
+          : "There are no valid shows to import.",
+    };
   }
 
   // Each insert re-checks for duplicates itself, so a show added by someone
