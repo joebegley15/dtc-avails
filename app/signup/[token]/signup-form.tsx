@@ -15,18 +15,11 @@ export function SignupForm({ token }: { token: string }) {
     <form action={formAction} className="mt-6 flex flex-col gap-3">
       <input type="hidden" name="token" value={token} />
       <input
-        name="name"
-        placeholder="Name"
-        required
-        autoFocus
-        defaultValue={state.values?.name}
-        className={inputClass}
-      />
-      <input
         name="email"
         type="email"
         placeholder="Email"
         required
+        autoFocus
         defaultValue={state.values?.email}
         className={inputClass}
       />

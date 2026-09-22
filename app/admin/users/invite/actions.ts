@@ -14,14 +14,21 @@ export type CreateInviteResult =
   | { ok: true; token: string }
   | { ok: false; error: string };
 
-export async function createInviteLink(role: string): Promise<CreateInviteResult> {
+export async function createInviteLink(
+  role: string,
+  name: string
+): Promise<CreateInviteResult> {
   const admin = await requireAdmin();
 
   if (typeof role !== "string" || !ROLES.includes(role as InviteRole)) {
     return { ok: false, error: "Invalid role." };
   }
+  const trimmedName = typeof name === "string" ? name.trim() : "";
+  if (!trimmedName) {
+    return { ok: false, error: "Their name is required." };
+  }
 
-  const token = await createInvite(role as InviteRole, admin.id);
+  const token = await createInvite(role as InviteRole, trimmedName, admin.id);
   revalidatePath("/admin/users/invite");
   return { ok: true, token };
 }

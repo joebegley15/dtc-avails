@@ -10,7 +10,7 @@ import { uniqueUsername, usernameBase } from "@/lib/user-import";
 
 export type AcceptInviteState = {
   error?: string;
-  values?: { name: string; email: string; username: string; homeMarket: string };
+  values?: { email: string; username: string; homeMarket: string };
 };
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -27,17 +27,18 @@ export async function acceptInvite(
   formData: FormData
 ): Promise<AcceptInviteState> {
   const token = String(formData.get("token") ?? "");
-  const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const usernameRaw = String(formData.get("username") ?? "").trim().toLowerCase();
   const homeMarket = String(formData.get("homeMarket") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const confirm = String(formData.get("confirm") ?? "");
 
-  const values = { name, email, username: usernameRaw, homeMarket };
+  const values = { email, username: usernameRaw, homeMarket };
 
   // Checked here too, not just on the page: a link can be used (or revoked)
-  // between the page loading and the form being submitted.
+  // between the page loading and the form being submitted. The invitee's
+  // name isn't part of the form at all — it was fixed by the admin who sent
+  // the link, so it comes from the invite itself, not from this submission.
   const invite = await lookupInvite(token);
   if (invite.status !== "valid") {
     return {
@@ -46,7 +47,6 @@ export async function acceptInvite(
     };
   }
 
-  if (!name) return { error: "Name is required.", values };
   if (!email || !EMAIL_RE.test(email)) {
     return { error: "Enter a valid email.", values };
   }
@@ -94,7 +94,7 @@ export async function acceptInvite(
 
   const passwordHash = await bcrypt.hash(password, 10);
   const userId = await claimInviteAndCreateUser(invite.id, {
-    name,
+    name: invite.name,
     email,
     username,
     passwordHash,

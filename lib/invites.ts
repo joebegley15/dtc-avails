@@ -8,6 +8,7 @@ export type InviteRole = "producer" | "comic";
 
 export type InviteRow = {
   id: number;
+  name: string;
   role: InviteRole;
   created_at: string;
   created_by_name: string;
@@ -28,12 +29,13 @@ function generateToken(): string {
  * token is ever available in full; only its hash is kept afterward. */
 export async function createInvite(
   role: InviteRole,
+  name: string,
   createdBy: number
 ): Promise<string> {
   const token = generateToken();
   await sql`
-    insert into invites (token_hash, role, created_by)
-    values (${hashToken(token)}, ${role}, ${createdBy})
+    insert into invites (token_hash, role, name, created_by)
+    values (${hashToken(token)}, ${role}, ${name}, ${createdBy})
   `;
   return token;
 }
@@ -41,18 +43,18 @@ export async function createInvite(
 export type InviteLookup =
   | { status: "invalid" }
   | { status: "used" }
-  | { status: "valid"; id: number; role: InviteRole };
+  | { status: "valid"; id: number; role: InviteRole; name: string };
 
 /** Read-only: does this token exist, and is it still unused? */
 export async function lookupInvite(token: string): Promise<InviteLookup> {
   const rows = (await sql`
-    select id, role, used_at from invites where token_hash = ${hashToken(token)}
-  `) as { id: number; role: InviteRole; used_at: string | null }[];
+    select id, role, name, used_at from invites where token_hash = ${hashToken(token)}
+  `) as { id: number; role: InviteRole; name: string; used_at: string | null }[];
 
   const row = rows[0];
   if (!row) return { status: "invalid" };
   if (row.used_at) return { status: "used" };
-  return { status: "valid", id: row.id, role: row.role };
+  return { status: "valid", id: row.id, role: row.role, name: row.name };
 }
 
 export type NewInviteUser = {
@@ -105,7 +107,7 @@ export async function claimInviteAndCreateUser(
 export async function listInvites(): Promise<InviteRow[]> {
   return (await sql`
     select
-      i.id, i.role,
+      i.id, i.role, i.name,
       i.created_at::text as created_at,
       i.used_at::text as used_at,
       creator.name as created_by_name,

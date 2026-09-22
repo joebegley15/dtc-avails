@@ -18,11 +18,11 @@ export default async function SignupPage({
         {invite.status === "valid" ? (
           <>
             <h1 className="text-lg font-semibold text-zinc-950">
-              Create your account
+              Set up {invite.name}&apos;s account
             </h1>
             <p className="mt-1 text-sm text-zinc-600">
-              You&apos;ve been invited as a {invite.role}. Fill in your own
-              details below.
+              You&apos;ve been invited as a {invite.role}. Fill in the rest
+              below.
             </p>
             <SignupForm token={token} />
           </>

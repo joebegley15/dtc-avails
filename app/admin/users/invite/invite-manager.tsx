@@ -29,6 +29,7 @@ function formatDateTime(iso: string): string {
 export function InviteManager({ invites }: { invites: InviteRow[] }) {
   const router = useRouter();
   const origin = useOrigin();
+  const [name, setName] = useState("");
   const [role, setRole] = useState<"comic" | "producer">("comic");
   const [token, setToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -42,9 +43,10 @@ export function InviteManager({ invites }: { invites: InviteRow[] }) {
     setToken(null);
     setCopied(false);
     startTransition(async () => {
-      const result = await createInviteLink(role);
+      const result = await createInviteLink(role, name);
       if (result.ok) {
         setToken(result.token);
+        setName("");
         router.refresh();
       } else {
         setError(result.error);
@@ -66,6 +68,15 @@ export function InviteManager({ invites }: { invites: InviteRow[] }) {
   return (
     <div className="mt-6">
       <div className="flex flex-wrap items-center gap-3 rounded-md border border-black/10 p-4">
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Their name"
+          aria-label="Their name"
+          disabled={pending}
+          className="rounded-md border border-black/10 bg-white px-3 py-2 text-sm text-zinc-950 outline-none focus:border-[#DA1717]"
+        />
         <select
           value={role}
           onChange={(e) => setRole(e.target.value as "comic" | "producer")}
@@ -78,7 +89,7 @@ export function InviteManager({ invites }: { invites: InviteRow[] }) {
         <button
           type="button"
           onClick={generate}
-          disabled={pending}
+          disabled={pending || name.trim() === ""}
           className="rounded-md bg-[#DA1717] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           {pending ? "Generating…" : "Generate invite link"}
@@ -115,6 +126,7 @@ export function InviteManager({ invites }: { invites: InviteRow[] }) {
       <table className="mt-8 w-full text-left text-sm">
         <thead>
           <tr className="border-b border-black/10 text-xs uppercase tracking-wide text-zinc-500">
+            <th className="py-2 pr-4">Name</th>
             <th className="py-2 pr-4">Role</th>
             <th className="py-2 pr-4">Created</th>
             <th className="py-2 pr-4">By</th>
@@ -128,7 +140,7 @@ export function InviteManager({ invites }: { invites: InviteRow[] }) {
           ))}
           {invites.length === 0 && (
             <tr>
-              <td colSpan={5} className="py-4 text-center text-zinc-500">
+              <td colSpan={6} className="py-4 text-center text-zinc-500">
                 No invites yet.
               </td>
             </tr>
@@ -159,7 +171,8 @@ function InviteRowItem({ invite }: { invite: InviteRow }) {
 
   return (
     <tr>
-      <td className="py-2 pr-4 capitalize text-zinc-950">{invite.role}</td>
+      <td className="py-2 pr-4 font-medium text-zinc-950">{invite.name}</td>
+      <td className="py-2 pr-4 capitalize text-zinc-600">{invite.role}</td>
       <td className="py-2 pr-4 text-zinc-600">{formatDateTime(invite.created_at)}</td>
       <td className="py-2 pr-4 text-zinc-600">{invite.created_by_name}</td>
       <td className="py-2 pr-4">

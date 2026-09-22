@@ -20,9 +20,10 @@ export default async function InviteUserPage() {
       </div>
 
       <p className="mt-3 text-sm text-zinc-600">
-        Generate a link and send it yourself, any way you like. Whoever opens
-        it fills in their own name, email, username, and password. The link
-        stops working the moment they finish, or if you revoke it first.
+        Put in their name, then generate a link and send it yourself, any way
+        you like. Whoever opens it fills in their own email, username, and
+        password. The link stops working the moment they finish, or if you
+        revoke it first.
       </p>
 
       <InviteManager invites={invites} />

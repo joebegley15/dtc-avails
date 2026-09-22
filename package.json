@@ -10,7 +10,8 @@
     "migrate:show-producers": "node scripts/migrate-show-producers.mjs",
     "migrate:passwords": "node scripts/migrate-passwords.mjs",
     "migrate:must-change-password": "node scripts/migrate-must-change-password.mjs",
-    "migrate:invites": "node scripts/migrate-invites.mjs"
+    "migrate:invites": "node scripts/migrate-invites.mjs",
+    "migrate:invite-names": "node scripts/migrate-invite-names.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
