@@ -14,7 +14,8 @@ export type UserCsvRow = Record<(typeof USER_CSV_FIELDS)[number], string>;
 
 export type ExistingUser = {
   id: number;
-  email: string;
+  // Link-based comics have no email; they can never be matched by one here.
+  email: string | null;
   role: "admin" | "producer" | "comic";
   username: string | null;
 };
@@ -91,7 +92,11 @@ export function planUserImport(
   existing: ExistingUser[],
   takenUsernames: Set<string>
 ): UserRowPlan[] {
-  const existingByEmail = new Map(existing.map((u) => [u.email.toLowerCase(), u]));
+  // Link-based comics (null email) can never be matched by an email-based
+  // CSV row, so they're simply left out of this lookup.
+  const existingByEmail = new Map(
+    existing.flatMap((u) => (u.email ? [[u.email.toLowerCase(), u] as const] : []))
+  );
   const taken = new Set(takenUsernames);
   const firstRowForEmail = new Map<string, number>();
 

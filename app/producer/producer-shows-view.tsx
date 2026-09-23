@@ -21,7 +21,7 @@ export type ShowCardData = {
   availableComics: {
     id: number;
     name: string;
-    email: string;
+    email: string | null;
     homeMarket: string | null;
     isAllStar: boolean;
     isTravel: boolean;
@@ -49,6 +49,10 @@ function AllStarBadge() {
 function CopyEmailsButton({ emails }: { emails: string[] }) {
   const [copied, setCopied] = useState(false);
 
+  // Hidden rather than disabled: when none of the listed comics have an
+  // email (all link-based), there's nothing this button could ever do.
+  if (emails.length === 0) return null;
+
   return (
     <button
       type="button"
@@ -58,7 +62,6 @@ function CopyEmailsButton({ emails }: { emails: string[] }) {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       }}
-      disabled={emails.length === 0}
       className="mt-3 rounded-md border border-black/10 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:border-zinc-950 disabled:opacity-50"
     >
       {copied ? "Copied!" : "Copy emails"}
@@ -121,14 +124,16 @@ function ShowCard({
                         Travel
                       </span>
                     )}
-                    <span className="text-zinc-500">{c.email}</span>
+                    {c.email && <span className="text-zinc-500">{c.email}</span>}
                     {c.homeMarket && (
                       <span className="text-zinc-400">· {c.homeMarket}</span>
                     )}
                   </li>
                 ))}
               </ul>
-              <CopyEmailsButton emails={show.availableComics.map((c) => c.email)} />
+              <CopyEmailsButton
+                emails={show.availableComics.flatMap((c) => (c.email ? [c.email] : []))}
+              />
             </>
           )}
         </div>

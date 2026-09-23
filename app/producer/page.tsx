@@ -30,7 +30,7 @@ type AvailableComicRow = {
   show_id: number;
   id: number;
   name: string;
-  email: string;
+  email: string | null;
   home_market: string | null;
   is_all_star: boolean;
 };

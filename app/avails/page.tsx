@@ -34,8 +34,8 @@ export default async function AvailsPage() {
       <header className="border-b-4 border-[#DA1717] bg-white">
         <div className="mx-auto w-full max-w-xl px-4 py-4">
           <div className="flex items-baseline justify-between gap-4">
-            <span className="text-xl font-bold tracking-tight text-[#DA1717]">
-              DON&apos;T TELL
+            <span className="text-xl font-bold tracking-tight text-[#1F3A5F]">
+              Texahoma Avails
             </span>
             <a
               href="/logout"

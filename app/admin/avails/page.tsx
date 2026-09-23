@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { formatShowDateTime } from "@/lib/format";
 import { DownloadCsvButton } from "./download-csv-button";
 
-type ComicRow = { id: number; name: string; email: string };
+type ComicRow = { id: number; name: string; email: string | null };
 
 type ShowRow = {
   id: number;

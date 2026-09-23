@@ -12,14 +12,14 @@ export function DownloadCsvButton({
   showLabels,
   cells,
 }: {
-  comics: { id: number; name: string; email: string }[];
+  comics: { id: number; name: string; email: string | null }[];
   showLabels: string[];
   cells: string[][];
 }) {
   function download() {
     const header = ["Name", "Email", ...showLabels].map(csvEscape).join(",");
     const rows = comics.map((comic, i) =>
-      [comic.name, comic.email, ...cells[i]].map(csvEscape).join(",")
+      [comic.name, comic.email ?? "", ...cells[i]].map(csvEscape).join(",")
     );
     const csv = [header, ...rows].join("\n");
 

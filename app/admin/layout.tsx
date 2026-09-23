@@ -8,8 +8,8 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
     <div className="flex min-h-screen flex-col bg-white">
       <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-3 border-b-4 border-[#DA1717] bg-white px-6 py-4">
         <div className="flex items-baseline gap-8">
-          <span className="text-xl font-bold tracking-tight text-[#DA1717]">
-            DON&apos;T TELL
+          <span className="text-xl font-bold tracking-tight text-[#1F3A5F]">
+            Texahoma Avails
           </span>
           <AdminNav />
         </div>

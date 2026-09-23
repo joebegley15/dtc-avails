@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { sql } from "@/lib/db";
 import { DEFAULT_PASSWORD, requireAdmin } from "@/lib/auth";
+import { buildLink, generateToken } from "@/lib/tokens";
 import type { Role } from "@/lib/session";
 
 const MIN_PASSWORD_LENGTH = 6;
@@ -150,4 +151,37 @@ export async function resetToDefault(
 
   revalidatePath("/admin/users");
   return { ok: true, message: "Reset. They'll choose a new password at next login." };
+}
+
+export type RegenerateTokenResult = { ok: boolean; link?: string; error?: string };
+
+/**
+ * Replaces a user's access token with a fresh one, which immediately
+ * invalidates their old link (the old value is simply overwritten and
+ * discarded, so it can never match again). Only ever touches a user who
+ * already has a token: this replaces a link, it doesn't create a first one.
+ */
+export async function regenerateAccessToken(
+  userId: number
+): Promise<RegenerateTokenResult> {
+  await requireAdmin();
+
+  if (typeof userId !== "number" || !Number.isInteger(userId) || userId <= 0) {
+    return { ok: false, error: "Invalid user." };
+  }
+
+  const token = generateToken();
+  const updated = (await sql`
+    update users
+    set access_token = ${token}, token_created_at = now(), must_change_password = false
+    where id = ${userId} and access_token is not null
+    returning id
+  `) as { id: number }[];
+
+  if (updated.length === 0) {
+    return { ok: false, error: "This user doesn't have a link yet." };
+  }
+
+  revalidatePath("/admin/users");
+  return { ok: true, link: buildLink(token) };
 }
