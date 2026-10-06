@@ -18,14 +18,17 @@ export type ShowCardData = {
   inCount: number;
   outCount: number;
   noResponseCount: number;
-  availableComics: {
-    id: number;
-    name: string;
-    email: string | null;
-    homeMarket: string | null;
-    isAllStar: boolean;
-    isTravel: boolean;
-  }[];
+  availableComics: ComicAnswer[];
+  unavailableComics: ComicAnswer[];
+};
+
+export type ComicAnswer = {
+  id: number;
+  name: string;
+  email: string | null;
+  homeMarket: string | null;
+  isAllStar: boolean;
+  isTravel: boolean;
 };
 
 function formatShowDateTime(dateStr: string, timeStr: string): string {
@@ -66,6 +69,26 @@ function CopyEmailsButton({ emails }: { emails: string[] }) {
     >
       {copied ? "Copied!" : "Copy emails"}
     </button>
+  );
+}
+
+function ComicLine({ comic: c, muted = false }: { comic: ComicAnswer; muted?: boolean }) {
+  return (
+    <li className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+      <span className={muted ? "text-zinc-500" : "font-medium text-zinc-950"}>
+        {c.name}
+      </span>
+      {c.isAllStar && <AllStarBadge />}
+      {!muted && c.isTravel && (
+        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800">
+          Travel
+        </span>
+      )}
+      {!muted && c.email && <span className="text-zinc-500">{c.email}</span>}
+      {!muted && c.homeMarket && (
+        <span className="text-zinc-400">· {c.homeMarket}</span>
+      )}
+    </li>
   );
 }
 
@@ -110,30 +133,34 @@ function ShowCard({
 
       {expanded && (
         <div className="border-t border-black/10 px-4 py-3">
+          <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+            Available ({show.availableComics.length})
+          </h3>
           {show.availableComics.length === 0 ? (
             <p className="text-sm text-zinc-500">No comics available yet.</p>
           ) : (
             <>
               <ul className="flex flex-col gap-2">
                 {show.availableComics.map((c) => (
-                  <li key={c.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                    <span className="font-medium text-zinc-950">{c.name}</span>
-                    {c.isAllStar && <AllStarBadge />}
-                    {c.isTravel && (
-                      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800">
-                        Travel
-                      </span>
-                    )}
-                    {c.email && <span className="text-zinc-500">{c.email}</span>}
-                    {c.homeMarket && (
-                      <span className="text-zinc-400">· {c.homeMarket}</span>
-                    )}
-                  </li>
+                  <ComicLine key={c.id} comic={c} />
                 ))}
               </ul>
               <CopyEmailsButton
                 emails={show.availableComics.flatMap((c) => (c.email ? [c.email] : []))}
               />
+            </>
+          )}
+
+          {show.unavailableComics.length > 0 && (
+            <>
+              <h3 className="mb-2 mt-4 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                Unavailable ({show.unavailableComics.length})
+              </h3>
+              <ul className="flex flex-col gap-1">
+                {show.unavailableComics.map((c) => (
+                  <ComicLine key={c.id} comic={c} muted />
+                ))}
+              </ul>
             </>
           )}
         </div>

@@ -26,8 +26,9 @@ type AvailsCountRow = {
   out_count: number;
 };
 
-type AvailableComicRow = {
+type AnsweredComicRow = {
   show_id: number;
+  available: boolean;
   id: number;
   name: string;
   email: string | null;
@@ -102,10 +103,10 @@ export default async function ProducerPage({
   `) as { total: number }[];
 
   let availsCountRows: AvailsCountRow[] = [];
-  let availableComicRows: AvailableComicRow[] = [];
+  let answeredComicRows: AnsweredComicRow[] = [];
 
   if (showIds.length > 0) {
-    [availsCountRows, availableComicRows] = (await Promise.all([
+    [availsCountRows, answeredComicRows] = (await Promise.all([
       sql`
         select show_id,
           count(*) filter (where available)::int as in_count,
@@ -115,13 +116,13 @@ export default async function ProducerPage({
         group by show_id
       `,
       sql`
-        select a.show_id, u.id, u.name, u.email, u.home_market, u.is_all_star
+        select a.show_id, a.available, u.id, u.name, u.email, u.home_market, u.is_all_star
         from avails a
         join users u on u.id = a.user_id
-        where a.show_id = any(${showIds}) and a.available = true
+        where a.show_id = any(${showIds})
         order by u.name
       `,
-    ])) as unknown as [AvailsCountRow[], AvailableComicRow[]];
+    ])) as unknown as [AvailsCountRow[], AnsweredComicRow[]];
   }
 
   const countsByShow = new Map<number, { inCount: number; outCount: number }>();
@@ -129,8 +130,8 @@ export default async function ProducerPage({
     countsByShow.set(row.show_id, { inCount: row.in_count, outCount: row.out_count });
   }
 
-  const comicsByShow = new Map<number, AvailableComicRow[]>();
-  for (const row of availableComicRows) {
+  const comicsByShow = new Map<number, AnsweredComicRow[]>();
+  for (const row of answeredComicRows) {
     const list = comicsByShow.get(row.show_id) ?? [];
     list.push(row);
     comicsByShow.set(row.show_id, list);
@@ -140,20 +141,25 @@ export default async function ProducerPage({
     const counts = countsByShow.get(s.id) ?? { inCount: 0, outCount: 0 };
     const noResponseCount = Math.max(0, totalComics - counts.inCount - counts.outCount);
 
-    const availableComics = (comicsByShow.get(s.id) ?? [])
-      .map((c) => ({
-        id: c.id,
-        name: c.name,
-        email: c.email,
-        homeMarket: c.home_market,
-        isAllStar: c.is_all_star,
-        isTravel: c.home_market ? cityPart(c.home_market) !== cityPart(s.city) : false,
-      }))
+    const answered = (comicsByShow.get(s.id) ?? []).map((c) => ({
+      id: c.id,
+      name: c.name,
+      email: c.email,
+      homeMarket: c.home_market,
+      isAllStar: c.is_all_star,
+      isTravel: c.home_market ? cityPart(c.home_market) !== cityPart(s.city) : false,
+      available: c.available,
+    }));
+
+    const availableComics = answered
+      .filter((c) => c.available)
       .sort((a, b) => {
         const tier = (c: { isAllStar: boolean; isTravel: boolean }) =>
           c.isAllStar ? 0 : c.isTravel ? 2 : 1;
         return tier(a) - tier(b) || a.name.localeCompare(b.name);
       });
+    // Already in name order from the query.
+    const unavailableComics = answered.filter((c) => !c.available);
 
     return {
       id: s.id,
@@ -170,6 +176,7 @@ export default async function ProducerPage({
       outCount: counts.outCount,
       noResponseCount,
       availableComics,
+      unavailableComics,
     };
   });
 
