@@ -28,7 +28,7 @@ export default async function AdminUsersPage() {
   `) as UserRow[];
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-10">
+    <div className="mx-auto w-full max-w-7xl px-4 py-10">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-lg font-semibold text-zinc-950">Users</h1>
@@ -60,8 +60,8 @@ export default async function AdminUsersPage() {
 
       <AddUserForm />
 
-      <div className="mt-8 overflow-x-auto">
-        <table className="w-full min-w-[1040px] text-left text-sm">
+      <div className="mt-8">
+        <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-black/10 text-xs uppercase tracking-wide text-zinc-500">
               <th className="py-2 pr-4">Name</th>
@@ -78,7 +78,7 @@ export default async function AdminUsersPage() {
             {users.map((u) => (
               <tr key={u.id}>
                 <td className="py-2 pr-4 font-medium text-zinc-950">{u.name}</td>
-                <td className="py-2 pr-4 text-zinc-600">{u.email ?? "—"}</td>
+                <td className="break-all py-2 pr-4 text-zinc-600">{u.email ?? "—"}</td>
                 <td className="py-2 pr-4 text-zinc-600">{u.username ?? "—"}</td>
                 <td className="py-2 pr-4 capitalize text-zinc-600">{u.role}</td>
                 <td className="py-2 pr-4 text-zinc-600">{u.home_market ?? "—"}</td>
