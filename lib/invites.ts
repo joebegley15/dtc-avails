@@ -60,7 +60,6 @@ export async function lookupInvite(token: string): Promise<InviteLookup> {
 export type NewInviteUser = {
   name: string;
   email: string;
-  username: string;
   passwordHash: string;
   role: InviteRole;
   homeMarket: string | null;
@@ -83,11 +82,10 @@ export async function claimInviteAndCreateUser(
       where id = ${inviteId} and used_at is null
       returning id
     )
-    insert into users (name, email, username, password_hash, role, home_market)
+    insert into users (name, email, password_hash, role, home_market)
     select
       ${user.name}::text,
       ${user.email}::text,
-      ${user.username}::text,
       ${user.passwordHash}::text,
       ${user.role}::text,
       ${user.homeMarket}::text

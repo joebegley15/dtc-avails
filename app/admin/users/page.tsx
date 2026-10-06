@@ -11,7 +11,6 @@ type UserRow = {
   id: number;
   name: string;
   email: string | null;
-  username: string | null;
   role: "admin" | "producer" | "comic";
   home_market: string | null;
   is_all_star: boolean;
@@ -22,7 +21,7 @@ export default async function AdminUsersPage() {
   await requireAdmin();
 
   const users = (await sql`
-    select id, name, email, username, role, home_market, is_all_star, access_token
+    select id, name, email, role, home_market, is_all_star, access_token
     from users
     order by role, name
   `) as UserRow[];
@@ -66,7 +65,6 @@ export default async function AdminUsersPage() {
             <tr className="border-b border-black/10 text-xs uppercase tracking-wide text-zinc-500">
               <th className="py-2 pr-4">Name</th>
               <th className="py-2 pr-4">Email</th>
-              <th className="py-2 pr-4">Username</th>
               <th className="py-2 pr-4">Role</th>
               <th className="py-2 pr-4">Home market</th>
               <th className="py-2 pr-4">All-star</th>
@@ -79,7 +77,6 @@ export default async function AdminUsersPage() {
               <tr key={u.id}>
                 <td className="py-2 pr-4 font-medium text-zinc-950">{u.name}</td>
                 <td className="break-all py-2 pr-4 text-zinc-600">{u.email ?? "—"}</td>
-                <td className="py-2 pr-4 text-zinc-600">{u.username ?? "—"}</td>
                 <td className="py-2 pr-4 capitalize text-zinc-600">{u.role}</td>
                 <td className="py-2 pr-4 text-zinc-600">{u.home_market ?? "—"}</td>
                 <td className="py-2 pr-4">
@@ -102,7 +99,7 @@ export default async function AdminUsersPage() {
             ))}
             {users.length === 0 && (
               <tr>
-                <td colSpan={8} className="py-4 text-center text-zinc-500">
+                <td colSpan={7} className="py-4 text-center text-zinc-500">
                   No users yet.
                 </td>
               </tr>

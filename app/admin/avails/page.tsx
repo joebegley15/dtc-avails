@@ -19,7 +19,10 @@ export default async function AdminAvailsPage() {
   await requireAdmin();
 
   const comics = (await sql`
-    select id, name, email from users where role = 'comic' order by name
+    select id, name, email from users u
+    where role in ('comic', 'producer')
+      or exists (select 1 from avails a where a.user_id = u.id)
+    order by name
   `) as ComicRow[];
 
   const shows = (await sql`
@@ -76,7 +79,7 @@ export default async function AdminAvailsPage() {
           <table className="w-full min-w-max text-left text-sm">
             <thead>
               <tr className="border-b border-black/10 text-xs uppercase tracking-wide text-zinc-500">
-                <th className="sticky left-0 bg-white py-2 pr-4">Comic</th>
+                <th className="sticky left-0 bg-white py-2 pr-4">Name</th>
                 {shows.map((s, i) => (
                   <th
                     key={s.id}

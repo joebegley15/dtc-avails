@@ -3,19 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const LINKS = [
-  { href: "/admin/shows", label: "Shows" },
-  { href: "/admin/bulk-upload", label: "Bulk upload" },
-  { href: "/admin/users", label: "Users" },
-];
+export type NavTab = { href: string; label: string };
 
-export function AdminNav() {
+export function NavTabs({ tabs }: { tabs: NavTab[] }) {
   const pathname = usePathname();
 
   return (
-    <nav className="flex gap-6 text-sm">
-      {LINKS.map(({ href, label }) => {
-        const active = pathname === href || pathname.startsWith(`${href}/`);
+    <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+      {tabs.map(({ href, label }) => {
+        // Match on the path alone: a tab's href may carry a query string.
+        const path = href.split("?")[0];
+        const active = pathname === path || pathname.startsWith(`${path}/`);
         return (
           <Link
             key={href}

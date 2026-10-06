@@ -36,19 +36,13 @@ export async function createUser(
   const email = String(formData.get("email") ?? "")
     .trim()
     .toLowerCase();
-  const username = String(formData.get("username") ?? "")
-    .trim()
-    .toLowerCase();
   const password = String(formData.get("password") ?? "");
   const role = String(formData.get("role") ?? "") as Role;
   const homeMarket = String(formData.get("homeMarket") ?? "").trim();
   const isAllStar = formData.get("isAllStar") === "on";
 
-  if (!name || !email || !username || !password || !role) {
-    return { error: "Name, email, username, password, and role are required." };
-  }
-  if (/\s/.test(username)) {
-    return { error: "Username can't contain spaces." };
+  if (!name || !email || !password || !role) {
+    return { error: "Name, email, password, and role are required." };
   }
   const pwError = passwordError(password);
   if (pwError) {
@@ -62,18 +56,12 @@ export async function createUser(
 
   try {
     await sql`
-      insert into users (name, email, username, password_hash, role, home_market, is_all_star)
-      values (${name}, ${email}, ${username}, ${passwordHash}, ${role}, ${homeMarket || null}, ${isAllStar})
+      insert into users (name, email, password_hash, role, home_market, is_all_star)
+      values (${name}, ${email}, ${passwordHash}, ${role}, ${homeMarket || null}, ${isAllStar})
     `;
   } catch (err) {
     if (err instanceof Error && "code" in err && err.code === "23505") {
-      const constraint =
-        "constraint" in err ? String(err.constraint) : "";
-      return {
-        error: constraint.includes("username")
-          ? "That username is already in use."
-          : "That email is already in use.",
-      };
+      return { error: "That email is already in use." };
     }
     throw err;
   }

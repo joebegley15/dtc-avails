@@ -96,7 +96,9 @@ export default async function ProducerPage({
   const showIds = showRows.map((r) => r.id);
 
   const [{ total: totalComics }] = (await sql`
-    select count(*)::int as total from users where role = 'comic'
+    select count(*)::int as total from users u
+    where role in ('comic', 'producer')
+      or exists (select 1 from avails a where a.user_id = u.id)
   `) as { total: number }[];
 
   let availsCountRows: AvailsCountRow[] = [];

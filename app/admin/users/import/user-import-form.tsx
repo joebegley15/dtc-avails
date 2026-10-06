@@ -17,7 +17,6 @@ const KNOWN_HEADERS = [
   "role",
   "home_market",
   "is_all_star",
-  "username",
 ] as const;
 
 // Spreadsheet headers people actually type.
@@ -191,7 +190,6 @@ export function UserImportForm({ defaultPassword }: { defaultPassword: string })
                 <th className="px-2 py-2">Status</th>
                 <th className="px-2 py-2">Name</th>
                 <th className="px-2 py-2">Email</th>
-                <th className="px-2 py-2">Username</th>
                 <th className="px-2 py-2">Role</th>
                 <th className="px-2 py-2">Home market</th>
                 <th className="px-2 py-2">All-star</th>
@@ -227,7 +225,7 @@ function PreviewTableRow({ plan }: { plan: UserRowPlan }) {
           <span className="font-medium text-zinc-700">
             Update{" "}
             <span className="font-normal text-zinc-500">
-              (username and password stay)
+              (password stays)
             </span>
           </span>
         ) : (
@@ -236,7 +234,6 @@ function PreviewTableRow({ plan }: { plan: UserRowPlan }) {
       </td>
       <td className="px-2 py-2">{user?.name ?? raw.name}</td>
       <td className="px-2 py-2">{user?.email ?? raw.email}</td>
-      <td className="px-2 py-2">{user ? user.username : raw.username || "—"}</td>
       <td className="px-2 py-2 capitalize">
         {user ? (plan.action === "update" ? "unchanged" : user.role) : raw.role || "—"}
       </td>
@@ -266,10 +263,8 @@ function ImportResult({
   function downloadLogins() {
     // No password column: every new user starts with the same default one.
     const lines = [
-      ["name", "email", "username"].join(","),
-      ...result.newUsers.map((u) =>
-        [u.name, u.email, u.username].map(csvCell).join(",")
-      ),
+      ["name", "email"].join(","),
+      ...result.newUsers.map((u) => [u.name, u.email].map(csvCell).join(",")),
     ];
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -318,14 +313,14 @@ function ImportResult({
             <thead>
               <tr className="border-b border-black/10 text-xs uppercase tracking-wide text-zinc-500">
                 <th className="px-2 py-2">Name</th>
-                <th className="px-2 py-2">Username</th>
+                <th className="px-2 py-2">Email</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-black/5">
               {result.newUsers.map((u: ImportedUser) => (
                 <tr key={u.email}>
                   <td className="px-2 py-2 text-zinc-950">{u.name}</td>
-                  <td className="px-2 py-2 text-zinc-700">{u.username}</td>
+                  <td className="px-2 py-2 text-zinc-700">{u.email}</td>
                 </tr>
               ))}
             </tbody>

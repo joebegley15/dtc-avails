@@ -1,4 +1,4 @@
-// Access tokens for link-based sign-in (no username or password). The token
+// Access tokens for link-based sign-in (no email or password). The token
 // itself is the credential, so it's stored in the clear (there's nothing to
 // hash it against at lookup time) and must be unguessable on its own:
 // crypto-random, never sequential, never derived from the user's name.

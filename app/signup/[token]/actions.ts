@@ -6,11 +6,10 @@ import { sql } from "@/lib/db";
 import { createSession } from "@/lib/session";
 import { roleHomePath } from "@/lib/roles";
 import { claimInviteAndCreateUser, lookupInvite } from "@/lib/invites";
-import { uniqueUsername, usernameBase } from "@/lib/user-import";
 
 export type AcceptInviteState = {
   error?: string;
-  values?: { email: string; username: string; homeMarket: string };
+  values?: { email: string; homeMarket: string };
 };
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -28,12 +27,11 @@ export async function acceptInvite(
 ): Promise<AcceptInviteState> {
   const token = String(formData.get("token") ?? "");
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const usernameRaw = String(formData.get("username") ?? "").trim().toLowerCase();
   const homeMarket = String(formData.get("homeMarket") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const confirm = String(formData.get("confirm") ?? "");
 
-  const values = { email, username: usernameRaw, homeMarket };
+  const values = { email, homeMarket };
 
   // Checked here too, not just on the page: a link can be used (or revoked)
   // between the page loading and the form being submitted. The invitee's
@@ -49,9 +47,6 @@ export async function acceptInvite(
 
   if (!email || !EMAIL_RE.test(email)) {
     return { error: "Enter a valid email.", values };
-  }
-  if (usernameRaw && /\s/.test(usernameRaw)) {
-    return { error: "Username can't contain spaces.", values };
   }
   if (password.length < MIN_PASSWORD_LENGTH) {
     return {
@@ -73,30 +68,10 @@ export async function acceptInvite(
     return { error: "That email is already in use.", values };
   }
 
-  let username = usernameRaw;
-  if (username) {
-    const takenByOther = await sql`
-      select 1 from users where lower(username) = ${username}
-    `;
-    if (takenByOther.length > 0) {
-      return { error: "That username is already in use.", values };
-    }
-  } else {
-    const taken = new Set(
-      (
-        (await sql`select username from users where username is not null`) as {
-          username: string;
-        }[]
-      ).map((r) => r.username.toLowerCase())
-    );
-    username = uniqueUsername(usernameBase(email), taken);
-  }
-
   const passwordHash = await bcrypt.hash(password, 10);
   const userId = await claimInviteAndCreateUser(invite.id, {
     name: invite.name,
     email,
-    username,
     passwordHash,
     role: invite.role,
     homeMarket: homeMarket || null,

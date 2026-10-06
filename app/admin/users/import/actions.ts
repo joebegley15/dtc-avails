@@ -15,7 +15,7 @@ import {
 
 export type ValidateUsersResult = { rows: UserRowPlan[] } | { error: string };
 
-export type ImportedUser = { name: string; email: string; username: string };
+export type ImportedUser = { name: string; email: string };
 
 export type ImportUsersResult =
   | {
@@ -53,13 +53,10 @@ async function planRows(
   }
 
   const existing = (await sql`
-    select id, email, role, username from users
+    select id, email, role from users
   `) as ExistingUser[];
-  const taken = new Set(
-    existing.flatMap((u) => (u.username ? [u.username.toLowerCase()] : []))
-  );
 
-  return { plans: planUserImport(input.map(coerceRow), existing, taken) };
+  return { plans: planUserImport(input.map(coerceRow), existing) };
 }
 
 /** Validates only. Saves nothing. */
@@ -76,7 +73,7 @@ export async function validateUsers(
  * Validates again on the server, then in one transaction updates existing
  * users (name, home market, all-star only) and inserts new ones with the
  * default password and must_change_password = true. Existing users'
- * passwords, usernames, and roles are never touched.
+ * passwords and roles are never touched.
  */
 export async function importUsers(
   rows: UserCsvRow[]
@@ -110,9 +107,9 @@ export async function importUsers(
   `;
   const insertQuery = (user: PlannedUser) => sql`
     insert into users
-      (name, email, username, password_hash, role, home_market, is_all_star, must_change_password)
+      (name, email, password_hash, role, home_market, is_all_star, must_change_password)
     values
-      (${user.name}, ${user.email}, ${user.username}, ${defaultHash}, ${user.role},
+      (${user.name}, ${user.email}, ${defaultHash}, ${user.role},
        ${user.homeMarket}, ${user.isAllStar ?? false}, true)
     on conflict (email) do nothing
     returning id
@@ -125,11 +122,11 @@ export async function importUsers(
       ...toAdd.map(insertQuery),
     ])) as unknown as unknown[][];
   } catch (err) {
-    // A username or email taken by someone else since validation.
+    // An email taken by someone else since validation.
     if (err instanceof Error && "code" in err && err.code === "23505") {
       return {
         error:
-          "A username or email was taken while importing. Nothing was imported. Check the file and try again.",
+          "An email was taken while importing. Nothing was imported. Check the file and try again.",
       };
     }
     throw err;
@@ -140,7 +137,7 @@ export async function importUsers(
   const updated = updateResults.filter((r) => r.length > 0).length;
   const newUsers = toAdd.flatMap((user, i) =>
     addResults[i].length > 0
-      ? [{ name: user.name, email: user.email, username: user.username }]
+      ? [{ name: user.name, email: user.email }]
       : []
   );
 

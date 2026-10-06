@@ -20,7 +20,7 @@ export default async function BulkLinksPage() {
       <div className="mt-3 text-sm text-zinc-600">
         <p>
           Upload a CSV of comic names. Each one gets a private link that
-          signs them straight in, no username or password needed.
+          signs them straight in, no email or password needed.
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>Required: name. Optional: home_market, all_star.</li>

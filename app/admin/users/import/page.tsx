@@ -21,19 +21,15 @@ export default async function ImportUsersPage() {
         <p>
           Upload a CSV with these headers:{" "}
           <code className="rounded bg-zinc-100 px-1 py-0.5 text-zinc-800">
-            name, email, role, home_market, is_all_star, username
+            name, email, role, home_market, is_all_star
           </code>
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>Required: name, email. Everything else is optional.</li>
           <li>Role: comic (the default) or producer.</li>
           <li>
-            Username: if blank, one is made from the part of the email before
-            the @, with a number added if it&apos;s taken.
-          </li>
-          <li>
             An email that already exists is updated (name, home market,
-            all-star). Its username and password are never changed. Blank cells
+            all-star). Its password is never changed. Blank cells
             leave existing values alone.
           </li>
           <li>Admins can&apos;t be imported. Add them one at a time in Users.</li>

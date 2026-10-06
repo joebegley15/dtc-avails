@@ -33,15 +33,6 @@ export function AddUserForm() {
         className={inputClass}
       />
       <input
-        name="username"
-        placeholder="Username"
-        required
-        autoCapitalize="none"
-        autoComplete="off"
-        spellCheck={false}
-        className={inputClass}
-      />
-      <input
         name="password"
         type="password"
         placeholder="Starting password (min 6 characters)"

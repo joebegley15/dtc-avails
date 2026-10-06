@@ -12,7 +12,8 @@
     "migrate:must-change-password": "node scripts/migrate-must-change-password.mjs",
     "migrate:invites": "node scripts/migrate-invites.mjs",
     "migrate:invite-names": "node scripts/migrate-invite-names.mjs",
-    "migrate:access-tokens": "node scripts/migrate-access-tokens.mjs"
+    "migrate:access-tokens": "node scripts/migrate-access-tokens.mjs",
+    "migrate:drop-username": "node scripts/migrate-drop-username.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

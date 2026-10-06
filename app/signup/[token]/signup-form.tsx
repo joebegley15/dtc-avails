@@ -20,16 +20,10 @@ export function SignupForm({ token }: { token: string }) {
         placeholder="Email"
         required
         autoFocus
-        defaultValue={state.values?.email}
-        className={inputClass}
-      />
-      <input
-        name="username"
-        placeholder="Username (optional)"
         autoCapitalize="none"
         autoComplete="username"
         spellCheck={false}
-        defaultValue={state.values?.username}
+        defaultValue={state.values?.email}
         className={inputClass}
       />
       <input
