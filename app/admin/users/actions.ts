@@ -173,3 +173,38 @@ export async function regenerateAccessToken(
   revalidatePath("/admin/users");
   return { ok: true, link: buildLink(token) };
 }
+
+export type DeleteUserResult = { ok: boolean; message: string };
+
+/**
+ * Permanently deletes a non-admin user. Their avails and show-producer
+ * assignments go with them (on delete cascade). The two references without a
+ * cascade are cleared first: the legacy shows.producer_id column, and
+ * invites.used_by, so a used invite still shows as used, just by "someone".
+ * Admins can't be deleted here, which also means invites.created_by (always
+ * an admin) never blocks a delete.
+ */
+export async function deleteUser(userId: number): Promise<DeleteUserResult> {
+  await requireAdmin();
+
+  if (typeof userId !== "number" || !Number.isInteger(userId) || userId <= 0) {
+    return { ok: false, message: "Invalid user." };
+  }
+
+  const [, , deleted] = (await sql.transaction([
+    sql`update shows set producer_id = null where producer_id = ${userId}`,
+    sql`update invites set used_by = null where used_by = ${userId}`,
+    sql`delete from users where id = ${userId} and role <> 'admin' returning id`,
+  ])) as unknown as [unknown, unknown, { id: number }[]];
+
+  if (deleted.length === 0) {
+    const found = await sql`select 1 from users where id = ${userId}`;
+    return {
+      ok: false,
+      message: found.length === 0 ? "User not found." : "Admins can't be deleted.",
+    };
+  }
+
+  revalidatePath("/admin/users");
+  return { ok: true, message: "Deleted." };
+}

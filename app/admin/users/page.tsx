@@ -3,6 +3,7 @@ import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { buildLink } from "@/lib/tokens";
 import { AddUserForm } from "./add-user-form";
+import { DeleteUserButton } from "./delete-user-button";
 import { LinkCell } from "./link-cell";
 import { ResetPasswordButton } from "./reset-password-button";
 import { ResetToDefaultButton } from "./reset-to-default-button";
@@ -93,6 +94,9 @@ export default async function AdminUsersPage() {
                   <div className="flex flex-col gap-1">
                     <ResetPasswordButton userId={u.id} />
                     {u.role !== "admin" && <ResetToDefaultButton userId={u.id} />}
+                    {u.role !== "admin" && (
+                      <DeleteUserButton userId={u.id} name={u.name} />
+                    )}
                   </div>
                 </td>
               </tr>
