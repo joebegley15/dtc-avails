@@ -35,13 +35,21 @@ export type PreviewRow = {
   raw: CsvRow;
   /** Parsed values; null when the row has errors. */
   show: ParsedShow | null;
-  /** Producer names as matched in the database. */
+  /** Producers as matched in the database, even when the row has errors. */
+  producerIds: number[];
   producerNames: string[];
   /** How each name in the CSV cell was matched (exact, initial, spelling). */
   producerMatches: ProducerMatch[];
+  /** Missing, unknown, or ambiguous producers; fixable with a producer pick. */
+  producerErrors: string[];
+  /** True when the admin picked this row's producers instead of the CSV. */
+  producerPicked: boolean;
   errors: string[];
   duplicate: "existing" | "in-file" | null;
 };
+
+/** Producers the admin picked in the preview, by 1-based row number. */
+export type ProducerPicks = Record<number, number[]>;
 
 export type ValidateResult = { rows: PreviewRow[] } | { error: string };
 
@@ -61,7 +69,25 @@ function coerceRow(value: unknown): CsvRow {
   return row;
 }
 
-async function validateRows(input: unknown): Promise<ValidateResult> {
+// Picks come from the browser too: keep only whole-number rows and ids.
+function coercePicks(value: unknown): Map<number, number[]> {
+  const picks = new Map<number, number[]>();
+  if (value === null || typeof value !== "object") return picks;
+  for (const [key, ids] of Object.entries(value as Record<string, unknown>)) {
+    const row = Number(key);
+    if (!Number.isInteger(row) || !Array.isArray(ids)) continue;
+    picks.set(
+      row,
+      ids.filter((id): id is number => Number.isInteger(id))
+    );
+  }
+  return picks;
+}
+
+async function validateRows(
+  input: unknown,
+  rawPicks: unknown
+): Promise<ValidateResult> {
   if (!Array.isArray(input) || input.length === 0) {
     return { error: "The file has no data rows." };
   }
@@ -70,9 +96,11 @@ async function validateRows(input: unknown): Promise<ValidateResult> {
   }
 
   const producers = await loadProducerOptions();
+  const picks = coercePicks(rawPicks);
   const raws = input.map(coerceRow);
-  const validations = raws.map((raw) =>
-    validateShowInput(
+  const validations = raws.map((raw, i) => {
+    const picked = picks.get(i + 1);
+    return validateShowInput(
       {
         city: raw.city,
         neighborhood: raw.neighborhood,
@@ -80,11 +108,13 @@ async function validateRows(input: unknown): Promise<ValidateResult> {
         time: raw.time,
         venue: raw.venue,
         capacity: raw.capacity,
-        producerNames: splitProducerNames(raw.producer),
+        ...(picked
+          ? { producerIds: picked }
+          : { producerNames: splitProducerNames(raw.producer) }),
       },
       producers
-    )
-  );
+    );
+  });
 
   const dates = [
     ...new Set(validations.flatMap((v) => (v.show ? [v.show.showDate] : []))),
@@ -108,8 +138,11 @@ async function validateRows(input: unknown): Promise<ValidateResult> {
       row: i + 1,
       raw: raws[i],
       show: v.show,
+      producerIds: v.producerIds,
       producerNames: v.producerNames,
       producerMatches: v.producerMatches,
+      producerErrors: v.producerErrors,
+      producerPicked: picks.has(i + 1),
       errors: v.errors,
       duplicate,
     };
@@ -119,9 +152,12 @@ async function validateRows(input: unknown): Promise<ValidateResult> {
 }
 
 /** Validates only. Saves nothing. */
-export async function validateShows(rows: CsvRow[]): Promise<ValidateResult> {
+export async function validateShows(
+  rows: CsvRow[],
+  picks: ProducerPicks = {}
+): Promise<ValidateResult> {
   await requireAdmin();
-  return validateRows(rows);
+  return validateRows(rows, picks);
 }
 
 /**
@@ -129,16 +165,18 @@ export async function validateShows(rows: CsvRow[]): Promise<ValidateResult> {
  * wasn't unchecked (and its producers) in one transaction, then redirects to
  * /admin/shows.
  *
- * The full row list is validated exactly as it was previewed; `excludedRows`
- * (1-based row numbers) can only remove shows from the import, never add.
+ * The full row list is validated exactly as it was previewed, including the
+ * producers picked by hand; `excludedRows` (1-based row numbers) can only
+ * remove shows from the import, never add.
  */
 export async function importShows(
   rows: CsvRow[],
-  excludedRows: number[] = []
+  excludedRows: number[] = [],
+  picks: ProducerPicks = {}
 ): Promise<{ error: string } | undefined> {
   await requireAdmin();
 
-  const result = await validateRows(rows);
+  const result = await validateRows(rows, picks);
   if ("error" in result) return result;
 
   const excluded = new Set(

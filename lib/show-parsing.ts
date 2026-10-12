@@ -28,9 +28,13 @@ export type ParsedShow = {
 
 export type ShowValidation = {
   show: ParsedShow | null;
+  /** Producers that resolved, even when the show has other errors. */
+  producerIds: number[];
   producerNames: string[];
   /** How each CSV producer name was matched (empty for the add/edit forms). */
   producerMatches: ProducerMatch[];
+  /** The subset of `errors` about producers (missing, unknown, ambiguous). */
+  producerErrors: string[];
   errors: string[];
 };
 
@@ -92,10 +96,13 @@ export function parseCapacity(
   return n <= MAX_CAPACITY ? { ok: true, value: n } : { ok: false };
 }
 
-/** Splits a CSV producer cell on ";", trimming and dropping empties. */
+/**
+ * Splits a CSV producer cell into names. Several producers can be separated by
+ * ";", ",", "&", "/", "+", a line break, or the word "and".
+ */
 export function splitProducerNames(input: string): string[] {
   return input
-    .split(";")
+    .split(/[;,&/+\n]|\s+and\s+/i)
     .map((name) => name.trim())
     .filter((name) => name !== "");
 }
@@ -368,14 +375,18 @@ export function validateShowInput(
   const hasProducerInput = input.producerIds
     ? input.producerIds.length > 0
     : requested.length > 0;
-  if (!hasProducerInput) errors.push("Missing producer");
-  errors.push(...resolved.errors);
+  const producerErrors = hasProducerInput
+    ? resolved.errors
+    : ["Missing producer", ...resolved.errors];
+  errors.push(...producerErrors);
 
   if (errors.length > 0 || !showDate || !showTime || !capacity.ok) {
     return {
       show: null,
+      producerIds: resolved.ids,
       producerNames: resolved.resolvedNames,
       producerMatches: resolved.matches,
+      producerErrors,
       errors,
     };
   }
@@ -390,8 +401,10 @@ export function validateShowInput(
       capacity: capacity.value,
       producerIds: resolved.ids,
     },
+    producerIds: resolved.ids,
     producerNames: resolved.resolvedNames,
     producerMatches: resolved.matches,
+    producerErrors,
     errors,
   };
 }

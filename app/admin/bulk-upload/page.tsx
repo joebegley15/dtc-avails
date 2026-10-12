@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
+import { loadProducerOptions } from "@/lib/shows";
 import { BulkUploadForm } from "./bulk-upload-form";
 
 export default async function BulkUploadPage() {
   await requireAdmin();
+  const producers = await loadProducerOptions();
 
   return (
     <div className="mx-auto w-full max-w-7xl px-6 py-8">
@@ -33,10 +35,12 @@ export default async function BulkUploadPage() {
           <li>Time: 20:00, 8:00 PM, or 8 PM.</li>
           <li>
             Producer: a producer or admin&apos;s name as it appears in Users.
-            Separate several with &quot;;&quot;. A first initial and last name
-            (&quot;T. Truman&quot;) or a small spelling mistake still finds
-            the right person; the preview shows each of those matches so you
-            can check it.
+            Separate several with &quot;;&quot;, &quot;,&quot;, &quot;&amp;&quot;,
+            or &quot;and&quot;. A first initial and last name (&quot;T.
+            Truman&quot;) or a small spelling mistake still finds the right
+            person; the preview shows each of those matches so you can check
+            it. If a name can&apos;t be matched, pick the producers for that
+            row yourself in the preview.
           </li>
           <li>
             In the preview, uncheck any show you don&apos;t want to import.
@@ -52,7 +56,7 @@ export default async function BulkUploadPage() {
         .
       </p>
 
-      <BulkUploadForm />
+      <BulkUploadForm producers={producers} />
     </div>
   );
 }

@@ -1,13 +1,16 @@
 "use client";
 
 import Papa from "papaparse";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { formatShowDate, formatShowTime } from "@/lib/format";
+import type { ProducerOption } from "@/lib/show-parsing";
+import { ProducerPicker } from "../shows/producer-picker";
 import {
   importShows,
   validateShows,
   type CsvRow,
   type PreviewRow,
+  type ProducerPicks,
 } from "./actions";
 
 const REQUIRED_HEADERS = ["city", "date", "time", "producer", "venue"];
@@ -24,11 +27,15 @@ const KNOWN_HEADERS = [
 // Only rows that would actually be imported can be checked or unchecked.
 const isSelectable = (r: PreviewRow) => r.show !== null && !r.duplicate;
 
-export function BulkUploadForm() {
+export function BulkUploadForm({ producers }: { producers: ProducerOption[] }) {
   const [csvRows, setCsvRows] = useState<CsvRow[] | null>(null);
   const [preview, setPreview] = useState<PreviewRow[] | null>(null);
   // Row numbers the admin has unchecked. Everything else importable is in.
   const [excluded, setExcluded] = useState<Set<number>>(new Set());
+  // Producers picked by hand for rows whose CSV names didn't match.
+  const [picks, setPicks] = useState<ProducerPicks>({});
+  // Only the latest validation may update the preview.
+  const validationSeq = useRef(0);
   const [error, setError] = useState<string | null>(null);
   // Changing the key remounts the file input, which clears its selection.
   const [inputKey, setInputKey] = useState(0);
@@ -38,6 +45,7 @@ export function BulkUploadForm() {
     setCsvRows(null);
     setPreview(null);
     setExcluded(new Set());
+    setPicks({});
     setError(null);
     setInputKey((k) => k + 1);
   }
@@ -46,6 +54,7 @@ export function BulkUploadForm() {
     setCsvRows(null);
     setPreview(null);
     setExcluded(new Set());
+    setPicks({});
     setError(null);
 
     Papa.parse<Record<string, string>>(file, {
@@ -70,25 +79,40 @@ export function BulkUploadForm() {
           return row;
         });
         setCsvRows(rows);
-
-        startTransition(async () => {
-          const result = await validateShows(rows);
-          if ("error" in result) {
-            setError(result.error);
-          } else {
-            setPreview(result.rows);
-          }
-        });
+        revalidate(rows, {});
       },
       error: (err) => setError(`Couldn't read that file: ${err.message}`),
     });
+  }
+
+  function revalidate(rows: CsvRow[], nextPicks: ProducerPicks) {
+    const seq = ++validationSeq.current;
+    startTransition(async () => {
+      const result = await validateShows(rows, nextPicks);
+      if (seq !== validationSeq.current) return;
+      if ("error" in result) {
+        setError(result.error);
+      } else {
+        setPreview(result.rows);
+      }
+    });
+  }
+
+  /** ids null goes back to the names in the CSV. */
+  function pickProducers(row: number, ids: number[] | null) {
+    if (!csvRows) return;
+    const next = { ...picks };
+    if (ids) next[row] = ids;
+    else delete next[row];
+    setPicks(next);
+    revalidate(csvRows, next);
   }
 
   function handleImport() {
     if (!csvRows) return;
     startTransition(async () => {
       // On success the action redirects to /admin/shows.
-      const result = await importShows(csvRows, [...excluded]);
+      const result = await importShows(csvRows, [...excluded], picks);
       if (result?.error) setError(result.error);
     });
   }
@@ -204,6 +228,9 @@ export function BulkUploadForm() {
                   selected={!excluded.has(r.row)}
                   disabled={pending}
                   onToggle={() => toggleRow(r.row)}
+                  producers={producers}
+                  pickedIds={picks[r.row]}
+                  onPick={(ids) => pickProducers(r.row, ids)}
                 />
               ))}
             </tbody>
@@ -219,11 +246,17 @@ function PreviewTableRow({
   selected,
   disabled,
   onToggle,
+  producers,
+  pickedIds,
+  onPick,
 }: {
   row: PreviewRow;
   selected: boolean;
   disabled: boolean;
   onToggle: () => void;
+  producers: ProducerOption[];
+  pickedIds: number[] | undefined;
+  onPick: (ids: number[] | null) => void;
 }) {
   const { raw, show } = row;
   const hasErrors = row.errors.length > 0;
@@ -240,6 +273,8 @@ function PreviewTableRow({
 
   // Names that weren't an exact match, so the admin can check them.
   const notes = row.producerMatches.filter((m) => m.how !== "exact");
+  // Unmatched producers can be filled in by hand; keep the picker once used.
+  const showPicker = row.producerErrors.length > 0 || row.producerPicked;
 
   return (
     <tr className={rowClass}>
@@ -283,8 +318,20 @@ function PreviewTableRow({
       <td className="px-2 py-2">{show?.venue ?? raw.venue}</td>
       <td className="px-2 py-2">{show ? (show.capacity ?? "—") : raw.capacity}</td>
       <td className="px-2 py-2">
-        {show ? row.producerNames.join(", ") : raw.producer}
-        {notes.map((m) => (
+        {showPicker ? (
+          <ProducerCellPicker
+            raw={raw.producer}
+            producers={producers}
+            selected={pickedIds ?? row.producerIds}
+            picked={row.producerPicked}
+            onPick={onPick}
+          />
+        ) : show ? (
+          row.producerNames.join(", ")
+        ) : (
+          raw.producer
+        )}
+        {!row.producerPicked && notes.map((m) => (
           <p
             key={m.input}
             className={`mt-0.5 text-xs ${
@@ -299,5 +346,37 @@ function PreviewTableRow({
         ))}
       </td>
     </tr>
+  );
+}
+
+function ProducerCellPicker({
+  raw,
+  producers,
+  selected,
+  picked,
+  onPick,
+}: {
+  raw: string;
+  producers: ProducerOption[];
+  selected: number[];
+  picked: boolean;
+  onPick: (ids: number[] | null) => void;
+}) {
+  return (
+    <div className="text-zinc-800">
+      <ProducerPicker producers={producers} selected={selected} onChange={onPick} />
+      <p className="mt-0.5 text-xs text-zinc-500">
+        CSV: {raw.trim() ? <>&ldquo;{raw}&rdquo;</> : "(blank)"}
+        {picked && (
+          <button
+            type="button"
+            onClick={() => onPick(null)}
+            className="ml-2 underline hover:text-zinc-950"
+          >
+            Use CSV
+          </button>
+        )}
+      </p>
+    </div>
   );
 }
