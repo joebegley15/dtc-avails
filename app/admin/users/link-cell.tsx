@@ -1,20 +1,35 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { fillInviteMessage, loadInviteTemplate } from "@/lib/invite-message";
 import { regenerateAccessToken } from "./actions";
 
-export function LinkCell({ userId, link }: { userId: number; link: string }) {
+export function LinkCell({
+  userId,
+  name,
+  link,
+}: {
+  userId: number;
+  name: string;
+  link: string;
+}) {
   const [currentLink, setCurrentLink] = useState(link);
   const [confirming, setConfirming] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"invite" | "link" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  async function copy() {
+  async function copy(kind: "invite" | "link") {
+    // The template is read at click time: it's saved in this browser from
+    // the bulk links page.
+    const text =
+      kind === "invite"
+        ? fillInviteMessage(loadInviteTemplate(), name, currentLink)
+        : currentLink;
     try {
-      await navigator.clipboard.writeText(currentLink);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(text);
+      setCopied(kind);
+      setTimeout(() => setCopied(null), 2000);
     } catch {
       // Clipboard access can fail (permissions, non-secure context); the
       // link is still visible to copy by hand, so this isn't fatal.
@@ -40,10 +55,17 @@ export function LinkCell({ userId, link }: { userId: number; link: string }) {
       <div className="flex items-center gap-2">
         <button
           type="button"
-          onClick={copy}
+          onClick={() => copy("invite")}
           className="text-sm text-zinc-500 underline hover:text-zinc-950"
         >
-          {copied ? "Copied!" : "Copy link"}
+          {copied === "invite" ? "Copied!" : "Copy invite"}
+        </button>
+        <button
+          type="button"
+          onClick={() => copy("link")}
+          className="text-sm text-zinc-500 underline hover:text-zinc-950"
+        >
+          {copied === "link" ? "Copied!" : "Copy link"}
         </button>
         {!confirming && (
           <button

@@ -134,7 +134,7 @@ export default async function AdminUsersPage({
                     </span>
                   )}
                   {u.access_token ? (
-                    <LinkCell userId={u.id} link={buildLink(u.access_token)} />
+                    <LinkCell userId={u.id} name={u.name} link={buildLink(u.access_token)} />
                   ) : !u.activated && u.role !== "admin" ? (
                     <InviteLinkButton userId={u.id} />
                   ) : (

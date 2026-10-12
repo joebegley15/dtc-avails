@@ -2,6 +2,13 @@
 
 import Papa from "papaparse";
 import { useState, useTransition } from "react";
+import {
+  DEFAULT_INVITE_MESSAGE,
+  fillInviteMessage,
+  loadInviteTemplate,
+  saveInviteTemplate,
+  splitNames,
+} from "@/lib/invite-message";
 import type { LinkCsvRow, LinkRowPlan } from "@/lib/link-users";
 import {
   createLinkUsers,
@@ -63,6 +70,7 @@ export function BulkLinksForm() {
   const [preview, setPreview] = useState<LinkRowPlan[] | null>(null);
   const [created, setCreated] = useState<Created | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pasted, setPasted] = useState("");
   // Changing the key remounts the file input, which clears its selection.
   const [inputKey, setInputKey] = useState(0);
   const [pending, startTransition] = useTransition();
@@ -72,7 +80,34 @@ export function BulkLinksForm() {
     setPreview(null);
     setCreated(null);
     setError(null);
+    setPasted("");
     setInputKey((k) => k + 1);
+  }
+
+  function checkRows(rows: LinkCsvRow[]) {
+    setCsvRows(rows);
+    startTransition(async () => {
+      const result = await validateNames(rows);
+      if ("error" in result) {
+        setError(result.error);
+      } else {
+        setPreview(result.rows);
+      }
+    });
+  }
+
+  function handlePasted() {
+    setCsvRows(null);
+    setPreview(null);
+    setCreated(null);
+    setError(null);
+
+    const names = splitNames(pasted);
+    if (names.length === 0) {
+      setError("Paste at least one name.");
+      return;
+    }
+    checkRows(names.map((name) => ({ name, home_market: "", all_star: "" })));
   }
 
   function handleFile(file: File) {
@@ -97,21 +132,13 @@ export function BulkLinksForm() {
           return;
         }
 
-        const rows = results.data.map((r) => {
-          const row = {} as LinkCsvRow;
-          for (const h of KNOWN_HEADERS) row[h] = String(r[h] ?? "");
-          return row;
-        });
-        setCsvRows(rows);
-
-        startTransition(async () => {
-          const result = await validateNames(rows);
-          if ("error" in result) {
-            setError(result.error);
-          } else {
-            setPreview(result.rows);
-          }
-        });
+        checkRows(
+          results.data.map((r) => {
+            const row = {} as LinkCsvRow;
+            for (const h of KNOWN_HEADERS) row[h] = String(r[h] ?? "");
+            return row;
+          })
+        );
       },
       error: (err) => setError(`Couldn't read that file: ${err.message}`),
     });
@@ -143,6 +170,32 @@ export function BulkLinksForm() {
 
   return (
     <div className="mt-6">
+      {!preview && (
+        <div className="mb-6 flex flex-col gap-2">
+          <label htmlFor="pasted-names" className="text-sm font-medium text-zinc-800">
+            Paste names
+          </label>
+          <textarea
+            id="pasted-names"
+            value={pasted}
+            onChange={(e) => setPasted(e.target.value)}
+            disabled={pending}
+            rows={4}
+            placeholder="Jane Doe, Alex Rivera, Sam Lee"
+            className="w-full max-w-xl rounded-md border border-black/10 bg-white px-3 py-2 text-sm text-zinc-950 outline-none focus:border-[#DA1717]"
+          />
+          <button
+            type="button"
+            onClick={handlePasted}
+            disabled={pending || pasted.trim() === ""}
+            className="self-start rounded-md bg-[#C8553D] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          >
+            Check names
+          </button>
+          <p className="mt-2 text-sm text-zinc-500">Or upload a CSV file:</p>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-3">
         <input
           key={inputKey}
@@ -249,6 +302,17 @@ function PreviewTableRow({ plan }: { plan: LinkRowPlan }) {
   );
 }
 
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // Clipboard access can fail (permissions, non-secure context); the
+    // link is still visible to copy by hand, so this isn't fatal.
+    return false;
+  }
+}
+
 function LinksResult({
   result,
   onAnother,
@@ -256,10 +320,34 @@ function LinksResult({
   result: Created;
   onAnother: () => void;
 }) {
+  // Read once on mount; this component only renders in the browser after a
+  // create, so localStorage is available.
+  const [template, setTemplate] = useState(loadInviteTemplate);
+  const [copiedAll, setCopiedAll] = useState(false);
+
+  function updateTemplate(value: string) {
+    setTemplate(value);
+    saveInviteTemplate(value);
+  }
+
+  function inviteFor(l: LinkResultRow): string {
+    return fillInviteMessage(template, l.name, l.link);
+  }
+
+  async function copyAll() {
+    const all = result.links
+      .map((l) => `${l.name}\n${inviteFor(l)}`)
+      .join("\n\n----------\n\n");
+    if (await copyText(all)) {
+      setCopiedAll(true);
+      setTimeout(() => setCopiedAll(false), 2000);
+    }
+  }
+
   function downloadLinks() {
     downloadCsv("comic-links.csv", [
-      ["name", "link"].join(","),
-      ...result.links.map((l) => [l.name, l.link].map(csvCell).join(",")),
+      ["name", "link", "invite"].join(","),
+      ...result.links.map((l) => [l.name, l.link, inviteFor(l)].map(csvCell).join(",")),
     ]);
   }
 
@@ -276,17 +364,54 @@ function LinksResult({
 
       {result.links.length > 0 && (
         <>
-          <div className="mt-4 flex items-center justify-between gap-4">
+          <div className="mt-6 flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-4">
+              <label htmlFor="invite-message" className="text-sm font-medium text-zinc-800">
+                Invite message
+              </label>
+              {template !== DEFAULT_INVITE_MESSAGE && (
+                <button
+                  type="button"
+                  onClick={() => updateTemplate(DEFAULT_INVITE_MESSAGE)}
+                  className="text-sm text-zinc-500 underline hover:text-zinc-950"
+                >
+                  Reset to default
+                </button>
+              )}
+            </div>
+            <textarea
+              id="invite-message"
+              value={template}
+              onChange={(e) => updateTemplate(e.target.value)}
+              rows={6}
+              className="w-full rounded-md border border-black/10 bg-white px-3 py-2 text-sm text-zinc-950 outline-none focus:border-[#DA1717]"
+            />
+            <p className="text-xs text-zinc-500">
+              {"{first_name}"}, {"{name}"} and {"{link}"} are filled in for each
+              person. Your edits are saved in this browser.
+            </p>
+          </div>
+
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
             <h2 className="text-sm font-medium text-zinc-800">
               Links ({result.links.length})
             </h2>
-            <button
-              type="button"
-              onClick={downloadLinks}
-              className="rounded-md bg-[#C8553D] px-4 py-2 text-sm font-medium text-white"
-            >
-              Download links CSV
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={copyAll}
+                className="rounded-md border border-black/10 px-4 py-2 text-sm font-medium text-zinc-800 hover:border-zinc-950"
+              >
+                {copiedAll ? "Copied!" : "Copy all invites"}
+              </button>
+              <button
+                type="button"
+                onClick={downloadLinks}
+                className="rounded-md bg-[#C8553D] px-4 py-2 text-sm font-medium text-white"
+              >
+                Download links CSV
+              </button>
+            </div>
           </div>
 
           <table className="mt-2 w-full text-left text-sm">
@@ -299,7 +424,7 @@ function LinksResult({
             </thead>
             <tbody className="divide-y divide-black/5">
               {result.links.map((l) => (
-                <LinkTableRow key={l.link} link={l} />
+                <LinkTableRow key={l.link} link={l} invite={inviteFor(l)} />
               ))}
             </tbody>
           </table>
@@ -311,23 +436,19 @@ function LinksResult({
         onClick={onAnother}
         className="mt-6 rounded-md border border-black/10 px-4 py-2 text-sm font-medium text-zinc-800 hover:border-zinc-950"
       >
-        Upload another file
+        Add more names
       </button>
     </div>
   );
 }
 
-function LinkTableRow({ link }: { link: LinkResultRow }) {
-  const [copied, setCopied] = useState(false);
+function LinkTableRow({ link, invite }: { link: LinkResultRow; invite: string }) {
+  const [copied, setCopied] = useState<"invite" | "link" | null>(null);
 
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(link.link);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Clipboard access can fail (permissions, non-secure context); the
-      // link is still visible to copy by hand, so this isn't fatal.
+  async function copy(kind: "invite" | "link") {
+    if (await copyText(kind === "invite" ? invite : link.link)) {
+      setCopied(kind);
+      setTimeout(() => setCopied(null), 2000);
     }
   }
 
@@ -338,13 +459,22 @@ function LinkTableRow({ link }: { link: LinkResultRow }) {
         {link.link}
       </td>
       <td className="px-2 py-2">
-        <button
-          type="button"
-          onClick={copy}
-          className="rounded-md border border-black/10 px-2 py-1 text-xs font-medium text-zinc-800 hover:border-zinc-950"
-        >
-          {copied ? "Copied!" : "Copy"}
-        </button>
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => copy("invite")}
+            className="rounded-md bg-[#C8553D] px-2 py-1 text-xs font-medium text-white"
+          >
+            {copied === "invite" ? "Copied!" : "Copy invite"}
+          </button>
+          <button
+            type="button"
+            onClick={() => copy("link")}
+            className="rounded-md border border-black/10 px-2 py-1 text-xs font-medium text-zinc-800 hover:border-zinc-950"
+          >
+            {copied === "link" ? "Copied!" : "Copy link"}
+          </button>
+        </div>
       </td>
     </tr>
   );

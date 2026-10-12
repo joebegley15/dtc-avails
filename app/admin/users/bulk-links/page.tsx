@@ -19,11 +19,13 @@ export default async function BulkLinksPage() {
 
       <div className="mt-3 text-sm text-zinc-600">
         <p>
-          Upload a CSV of comic names. Each one gets a private link that
-          signs them straight in, no email or password needed.
+          Paste comic names (separated by commas or new lines) or upload a
+          CSV. Each one gets a private link that signs them straight in, no
+          email or password needed. Then copy a ready-to-send invite for each
+          person.
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
-          <li>Required: name. Optional: home_market, all_star.</li>
+          <li>CSV columns: name (required), home_market, all_star.</li>
           <li>Home market defaults to Austin, TX when blank.</li>
           <li>
             Home market must be one of the 20 cities in the Users dropdown
