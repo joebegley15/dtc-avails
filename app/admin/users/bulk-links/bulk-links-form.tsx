@@ -162,6 +162,7 @@ export function BulkLinksForm() {
   const newCount = preview?.filter((r) => r.action === "add").length ?? 0;
   const existingCount = preview?.filter((r) => r.action === "existing").length ?? 0;
   const errorCount = preview?.filter((r) => r.errors.length > 0).length ?? 0;
+  const warningCount = preview?.filter((r) => r.warnings.length > 0).length ?? 0;
   const creatable = newCount + existingCount;
 
   if (created) {
@@ -247,6 +248,11 @@ export function BulkLinksForm() {
           <p className="mt-6 text-sm font-medium text-zinc-800">
             {newCount} new, {existingCount} existing, {errorCount} error
             {errorCount === 1 ? "" : "s"}
+            {warningCount > 0 && (
+              <span className="text-amber-700">
+                , {warningCount} possible duplicate{warningCount === 1 ? "" : "s"}
+              </span>
+            )}
           </p>
 
           <table className="mt-2 w-full text-left text-sm">
@@ -276,7 +282,15 @@ function PreviewTableRow({ plan }: { plan: LinkRowPlan }) {
   const hasErrors = plan.errors.length > 0;
 
   return (
-    <tr className={hasErrors ? "bg-red-50 align-top" : "align-top text-zinc-800"}>
+    <tr
+      className={
+        hasErrors
+          ? "bg-red-50 align-top"
+          : plan.warnings.length > 0
+            ? "bg-amber-50 align-top text-zinc-800"
+            : "align-top text-zinc-800"
+      }
+    >
       <td className="px-2 py-2">{plan.row}</td>
       <td className="px-2 py-2">
         {hasErrors ? (
@@ -291,6 +305,13 @@ function PreviewTableRow({ plan }: { plan: LinkRowPlan }) {
           </span>
         ) : (
           <span className="font-medium text-emerald-700">New</span>
+        )}
+        {plan.warnings.length > 0 && (
+          <ul className="mt-1 list-disc pl-4 text-amber-700">
+            {plan.warnings.map((w) => (
+              <li key={w}>{w}</li>
+            ))}
+          </ul>
         )}
       </td>
       <td className="px-2 py-2">{user?.name ?? raw.name}</td>

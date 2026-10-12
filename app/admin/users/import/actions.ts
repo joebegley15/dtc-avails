@@ -53,7 +53,7 @@ async function planRows(
   }
 
   const existing = (await sql`
-    select id, email, role from users
+    select id, name, email, role from users
   `) as ExistingUser[];
 
   return { plans: planUserImport(input.map(coerceRow), existing) };

@@ -1,6 +1,7 @@
 // Pure planning and validation for the bulk user import. No database access:
 // callers pass in the existing users.
 import { matchHomeMarket } from "./markets";
+import { duplicateNameWarnings, type NamedPerson } from "./name-duplicates";
 
 export const USER_CSV_FIELDS = [
   "name",
@@ -14,6 +15,7 @@ export type UserCsvRow = Record<(typeof USER_CSV_FIELDS)[number], string>;
 
 export type ExistingUser = {
   id: number;
+  name: string;
   // Link-based comics have no email; they can never be matched by one here.
   email: string | null;
   role: "admin" | "producer" | "comic";
@@ -39,6 +41,8 @@ export type UserRowPlan = {
   user: PlannedUser | null;
   existingId: number | null;
   errors: string[];
+  /** Possible duplicate names. Shown to the admin; they don't block import. */
+  warnings: string[];
 };
 
 export const ADMIN_ROW_ERROR = "Add admins one at a time in /admin/users.";
@@ -64,6 +68,8 @@ function parseAllStar(value: string): boolean | null | "bad" {
  *    all-star only. Password and role are never touched.
  *  - Rows with role admin are errors, and so are rows that would touch an
  *    existing admin.
+ *  - A new user whose name looks like an existing user's, or like an earlier
+ *    row's, gets a warning. Two people can share a name, so it doesn't block.
  */
 export function planUserImport(
   rows: UserCsvRow[],
@@ -75,6 +81,7 @@ export function planUserImport(
     existing.flatMap((u) => (u.email ? [[u.email.toLowerCase(), u] as const] : []))
   );
   const firstRowForEmail = new Map<string, number>();
+  const earlierNames: NamedPerson[] = [];
 
   return rows.map((raw, i) => {
     const row = i + 1;
@@ -128,8 +135,10 @@ export function planUserImport(
       raw,
       existingId: match?.id ?? null,
     };
+    const priorRows = [...earlierNames];
+    if (name) earlierNames.push({ id: row, name });
     if (errors.length > 0) {
-      return { ...base, action: null, user: null, errors };
+      return { ...base, action: null, user: null, errors, warnings: [] };
     }
 
     const user: PlannedUser = {
@@ -139,6 +148,14 @@ export function planUserImport(
       homeMarket: market,
       isAllStar: allStar === "bad" ? null : allStar,
     };
-    return { ...base, action: match ? "update" : "add", user, errors };
+    const warnings = match
+      ? []
+      : duplicateNameWarnings(
+          name,
+          existing,
+          priorRows,
+          (u) => `${u.name} (${u.email ?? "link user"})`
+        );
+    return { ...base, action: match ? "update" : "add", user, errors, warnings };
   });
 }

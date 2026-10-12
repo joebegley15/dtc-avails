@@ -13,7 +13,7 @@ export function HomeMarketCell({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  // Values saved before the dropdown existed ("Austin", "Tulsa, OK") stay
+  // Values saved before the dropdown existed ("Austin", "Lawton, OK") stay
   // visible as their own option until someone picks a listed one.
   const legacy =
     homeMarket && !(HOME_MARKETS as readonly string[]).includes(homeMarket)

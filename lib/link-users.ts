@@ -1,6 +1,7 @@
 // Pure planning and validation for the bulk link-user upload. No database
 // access: callers pass in the existing users to match against.
 import { matchHomeMarket } from "./markets";
+import { duplicateNameWarnings, type NamedPerson } from "./name-duplicates";
 
 export const LINK_CSV_FIELDS = ["name", "home_market", "all_star"] as const;
 
@@ -28,6 +29,8 @@ export type LinkRowPlan = {
   /** Set when action is "existing": the matched user's id. */
   existingId: number | null;
   errors: string[];
+  /** Possible duplicate names. Shown to the admin; they don't block upload. */
+  warnings: string[];
 };
 
 export const DEFAULT_HOME_MARKET = "Austin, TX";
@@ -58,6 +61,8 @@ function parseAllStar(value: string): boolean | "bad" {
  *    so it must never attach to one silently.
  *  - A name repeated within the file is an error on every row after the
  *    first.
+ *  - A new name that looks like an existing user's ("Jon Smith" for "John
+ *    Smith") or an earlier row's gets a warning, but is still created.
  */
 export function planLinkUsers(
   rows: LinkCsvRow[],
@@ -69,6 +74,7 @@ export function planLinkUsers(
     byName.set(key, [...(byName.get(key) ?? []), u]);
   }
   const seenInFile = new Map<string, number>();
+  const earlierNames: NamedPerson[] = [];
 
   return rows.map((raw, i) => {
     const row = i + 1;
@@ -113,8 +119,12 @@ export function planLinkUsers(
       }
     }
 
+    // Exact repeats are already errors above; only lookalikes are left.
+    const priorRows = earlierNames.filter((r) => r.name.toLowerCase() !== key);
+    if (name) earlierNames.push({ id: row, name });
+
     if (errors.length > 0) {
-      return { row, raw, action: null, user: null, existingId, errors };
+      return { row, raw, action: null, user: null, existingId, errors, warnings: [] };
     }
 
     const user: PlannedLinkUser = {
@@ -130,6 +140,12 @@ export function planLinkUsers(
       user,
       existingId,
       errors,
+      warnings:
+        existingId !== null
+          ? []
+          : duplicateNameWarnings(name, existing, priorRows, (u) =>
+              u.role === "comic" ? u.name : `${u.name} (${u.role})`
+            ),
     };
   });
 }

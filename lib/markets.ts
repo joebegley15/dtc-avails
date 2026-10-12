@@ -1,14 +1,16 @@
 import { cityPart } from "./location";
 
 /**
- * Home markets a comedian can pick: the 20 most populous cities in Texas,
- * alphabetical. Stored in the same "City, ST" form as shows.city, so the
- * travel check (which compares city parts) lines up.
+ * Home markets a comedian can pick: the 20 most populous cities in Texas
+ * plus the Oklahoma cities over 100k (2020 census), alphabetical. Stored in
+ * the same "City, ST" form as shows.city, so the travel check (which compares
+ * city parts) lines up.
  */
 export const HOME_MARKETS = [
   "Amarillo, TX",
   "Arlington, TX",
   "Austin, TX",
+  "Broken Arrow, OK",
   "Brownsville, TX",
   "Corpus Christi, TX",
   "Dallas, TX",
@@ -24,8 +26,11 @@ export const HOME_MARKETS = [
   "Laredo, TX",
   "Lubbock, TX",
   "McKinney, TX",
+  "Norman, OK",
+  "Oklahoma City, OK",
   "Plano, TX",
   "San Antonio, TX",
+  "Tulsa, OK",
 ] as const;
 
 const BY_CITY = new Map(HOME_MARKETS.map((m) => [cityPart(m), m]));
