@@ -31,8 +31,11 @@ export default async function AdminUsersPage({
 }: PageProps<"/admin/users">) {
   await requireAdmin();
 
-  // ?role=, ?market= and ?status= filter the table. Unknown values are ignored.
+  // ?q= searches names and emails; ?role=, ?market= and ?status= filter the
+  // table. Unknown values are ignored.
   const params = await searchParams;
+  const query = typeof params.q === "string" ? params.q.trim() : "";
+  const needle = query.toLowerCase();
   const roleParam = typeof params.role === "string" ? params.role : "";
   const statusParam = typeof params.status === "string" ? params.status : "";
   const status = STATUSES.includes(statusParam) ? statusParam : "";
@@ -46,12 +49,20 @@ export default async function AdminUsersPage({
       -- Has chosen their own password.
       not (must_change_password or password_hash is null) as activated
     from users
-    order by role, name
+    -- Names are "First Last", so this is by first name.
+    order by lower(name), id
   `) as UserRow[];
 
   // Matched through matchHomeMarket so values saved before the dropdown
   // ("Austin") still count as their listed city ("Austin, TX").
   const filtered = allUsers.filter((u) => {
+    if (
+      needle &&
+      !u.name.toLowerCase().includes(needle) &&
+      !u.email?.toLowerCase().includes(needle)
+    ) {
+      return false;
+    }
     if (role && u.role !== role) return false;
     if (status && u.activated !== (status === "activated")) return false;
     if (market) {
@@ -101,6 +112,7 @@ export default async function AdminUsersPage({
         role={role}
         market={market}
         status={status}
+        query={query}
         activated={activatedCount}
         shown={filtered.length}
         total={allUsers.length}

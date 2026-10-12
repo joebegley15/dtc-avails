@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { HOME_MARKETS } from "@/lib/markets";
 
@@ -14,6 +14,7 @@ export function UserFilters({
   role,
   market,
   status,
+  query,
   activated,
   shown,
   total,
@@ -21,6 +22,7 @@ export function UserFilters({
   role: string;
   market: string;
   status: string;
+  query: string;
   /** How many of all users (unfiltered) have activated their account. */
   activated: number;
   shown: number;
@@ -34,15 +36,26 @@ export function UserFilters({
   const [roleValue, setRoleValue] = useState(role);
   const [marketValue, setMarketValue] = useState(market);
   const [statusValue, setStatusValue] = useState(status);
+  // Not part of the page's key for this component, so typing never remounts
+  // the input and loses focus.
+  const [queryValue, setQueryValue] = useState(query);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  function update(next: { role?: string; market?: string; status?: string }) {
+  function update(next: {
+    role?: string;
+    market?: string;
+    status?: string;
+    query?: string;
+  }) {
     const params = new URLSearchParams();
     const r = next.role ?? roleValue;
     const m = next.market ?? marketValue;
     const s = next.status ?? statusValue;
+    const q = (next.query ?? queryValue).trim();
     setRoleValue(r);
     setMarketValue(m);
     setStatusValue(s);
+    if (q) params.set("q", q);
     if (r) params.set("role", r);
     if (m) params.set("market", m);
     if (s) params.set("status", s);
@@ -52,6 +65,20 @@ export function UserFilters({
 
   return (
     <div className="mt-8 flex flex-wrap items-center gap-3">
+      <input
+        type="search"
+        aria-label="Search users"
+        placeholder="Search name or email"
+        value={queryValue}
+        onChange={(e) => {
+          const value = e.target.value;
+          setQueryValue(value);
+          // Wait for a pause in typing before reloading the list.
+          if (searchTimer.current) clearTimeout(searchTimer.current);
+          searchTimer.current = setTimeout(() => update({ query: value }), 250);
+        }}
+        className={`${selectClass} w-56`}
+      />
       <select
         aria-label="Filter by user type"
         value={roleValue}
@@ -87,10 +114,14 @@ export function UserFilters({
         <option value="activated">Activated</option>
         <option value="not-activated">Not activated</option>
       </select>
-      {(roleValue || marketValue || statusValue) && (
+      {(queryValue || roleValue || marketValue || statusValue) && (
         <button
           type="button"
-          onClick={() => update({ role: "", market: "", status: "" })}
+          onClick={() => {
+            if (searchTimer.current) clearTimeout(searchTimer.current);
+            setQueryValue("");
+            update({ query: "", role: "", market: "", status: "" });
+          }}
           className="text-sm text-zinc-500 underline hover:text-zinc-950"
         >
           Clear
