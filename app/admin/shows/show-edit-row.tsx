@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import type { ProducerOption } from "@/lib/show-parsing";
 import { createShow, updateShow, type ShowFormValues } from "./actions";
+import { AllStarButton } from "./all-star-button";
 import { ProducerPicker } from "./producer-picker";
 import type { ShowRowData } from "./types";
 
@@ -21,6 +22,7 @@ function initialValues(
       time: "",
       venue: "",
       capacity: "",
+      isAllStar: false,
       producerIds: [],
     };
   }
@@ -32,6 +34,7 @@ function initialValues(
     time: show.show_time,
     venue: show.venue,
     capacity: show.capacity === null ? "" : String(show.capacity),
+    isAllStar: show.is_all_star,
     // Only producer/admin users can be picked, so drop any other link.
     producerIds: show.producer_ids.filter((id) => selectable.has(id)),
   };
@@ -141,7 +144,13 @@ export function ShowEditRow({
             onChange={(ids) => set("producerIds", ids)}
           />
         </td>
-        <td className="px-2 py-2 text-zinc-400">—</td>
+        <td className="px-2 py-2">
+          <AllStarButton
+            isAllStar={values.isAllStar}
+            label={values.city || "new show"}
+            onClick={() => set("isAllStar", !values.isAllStar)}
+          />
+        </td>
         <td className="whitespace-nowrap px-2 py-2">
           <button
             type="button"

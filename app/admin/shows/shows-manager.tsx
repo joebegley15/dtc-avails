@@ -5,6 +5,7 @@ import { useMemo, useState, useSyncExternalStore, useTransition } from "react";
 import { formatShowDate, formatShowTime } from "@/lib/format";
 import type { ProducerOption } from "@/lib/show-parsing";
 import { deleteShow, toggleAllStar } from "./actions";
+import { AllStarButton } from "./all-star-button";
 import { DeleteAllShows } from "./delete-all-shows";
 import { ShowEditRow } from "./show-edit-row";
 import type { ShowRowData } from "./types";
@@ -284,23 +285,12 @@ function ShowRow({
           : "—"}
       </td>
       <td className="px-2 py-2">
-        <button
-          type="button"
-          role="switch"
-          aria-checked={show.is_all_star}
-          aria-label={`All-star: ${show.city}`}
+        <AllStarButton
+          isAllStar={show.is_all_star}
+          label={show.city}
           disabled={pending}
           onClick={() => run(() => toggleAllStar(show.id))}
-          className={`relative h-5 w-9 rounded-full transition-colors ${
-            show.is_all_star ? "bg-[#DA1717]" : "bg-zinc-300"
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${
-              show.is_all_star ? "left-[18px]" : "left-0.5"
-            }`}
-          />
-        </button>
+        />
       </td>
       <td className="whitespace-nowrap px-2 py-2">
         {confirmingDelete ? (

@@ -23,13 +23,19 @@ export default async function BulkUploadPage() {
         <p>
           Upload a CSV with these headers:{" "}
           <code className="rounded bg-zinc-100 px-1 py-0.5 text-zinc-800">
-            city, neighborhood, date, time, producer, venue, capacity
+            city, neighborhood, date, time, producer, venue, capacity, all_star
           </code>
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>
             Required: city, date, time, producer, venue. Optional:
-            neighborhood, capacity.
+            neighborhood, capacity, all_star.
+          </li>
+          <li>
+            All-star: &quot;yes&quot;, &quot;x&quot;, or &quot;★&quot; makes it an
+            all-star show, which only all-star comics see. Blank or
+            &quot;no&quot; means a regular show. You can also star shows on the
+            Shows page.
           </li>
           <li>Date: YYYY-MM-DD or M/D/YYYY.</li>
           <li>Time: 20:00, 8:00 PM, or 8 PM.</li>

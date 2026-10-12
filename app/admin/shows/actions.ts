@@ -24,6 +24,7 @@ export type ShowFormValues = {
   time: string;
   venue: string;
   capacity: string;
+  isAllStar: boolean;
   producerIds: number[];
 };
 
@@ -42,6 +43,7 @@ function coerceValues(raw: ShowFormValues) {
     time: text(raw?.time),
     venue: text(raw?.venue),
     capacity: text(raw?.capacity),
+    allStar: raw?.isAllStar === true,
     producerIds: Array.isArray(raw?.producerIds)
       ? raw.producerIds.filter((id): id is number => Number.isInteger(id))
       : [],

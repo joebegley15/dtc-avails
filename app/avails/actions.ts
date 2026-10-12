@@ -4,7 +4,12 @@ import { sql } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { loadVisibleShows } from "@/lib/avails";
 
-export type AvailsAnswer = { showId: number; available: boolean; downToHelp: boolean };
+/** available null means the show was left blank: any saved answer is removed. */
+export type AvailsAnswer = {
+  showId: number;
+  available: boolean | null;
+  downToHelp: boolean;
+};
 
 export type SubmitAvailsResult = { ok: boolean; saved: number; error?: string };
 
@@ -22,13 +27,16 @@ export async function submitAvails(
 
   // The list comes from the browser: keep only well-formed entries, and never
   // trust which shows it names. Visibility is re-derived from the database.
-  const requested = new Map<number, { available: boolean; downToHelp: boolean }>();
+  const requested = new Map<
+    number,
+    { available: boolean | null; downToHelp: boolean }
+  >();
   if (Array.isArray(answers)) {
     for (const answer of answers.slice(0, MAX_ANSWERS)) {
       if (
         answer &&
         Number.isInteger(answer.showId) &&
-        typeof answer.available === "boolean"
+        (typeof answer.available === "boolean" || answer.available === null)
       ) {
         requested.set(answer.showId, {
           available: answer.available,
@@ -40,15 +48,21 @@ export async function submitAvails(
 
   const visibleIds = new Set((await loadVisibleShows(user)).map((s) => s.id));
   const allowed = [...requested].filter(([showId]) => visibleIds.has(showId));
-
-  if (allowed.length === 0) {
-    return { ok: false, saved: 0, error: "There were no avails to save." };
-  }
+  const answered = allowed.flatMap(([showId, { available, downToHelp }]) =>
+    available === null ? [] : [{ showId, available, downToHelp }]
+  );
+  const cleared = allowed.flatMap(([showId, { available }]) =>
+    available === null ? [showId] : []
+  );
 
   await sql.transaction([
     sql`update users set has_truck = ${hasTruck} where id = ${user.id}`,
-    ...allowed.map(
-      ([showId, { available, downToHelp }]) => sql`
+    sql`
+      delete from avails
+      where user_id = ${user.id} and show_id = any(${cleared}::integer[])
+    `,
+    ...answered.map(
+      ({ showId, available, downToHelp }) => sql`
         insert into avails (user_id, show_id, available, down_to_help, submitted_at)
         values (${user.id}, ${showId}, ${available}, ${downToHelp}, now())
         on conflict (user_id, show_id)
@@ -60,5 +74,5 @@ export async function submitAvails(
     ),
   ]);
 
-  return { ok: true, saved: allowed.length };
+  return { ok: true, saved: answered.length };
 }

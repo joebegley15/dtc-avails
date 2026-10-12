@@ -73,13 +73,17 @@ export function AvailsForm({
   const ordered = useMemo(() => byDate(shows), [shows]);
 
   const answeredCount = ordered.filter((s) => answers[s.id] !== undefined).length;
-  const missing = ordered.length - answeredCount;
   const lastSubmittedText = useLocalDateTime(lastSubmitted);
 
   function answer(showId: number, available: boolean) {
-    // Tapping the selected pill again does nothing.
-    if (answers[showId] === available) return;
-    setAnswers((prev) => ({ ...prev, [showId]: available }));
+    // Tapping the selected pill again clears the answer: shows can be left
+    // blank.
+    setAnswers((prev) => {
+      const next = { ...prev };
+      if (prev[showId] === available) delete next[showId];
+      else next[showId] = available;
+      return next;
+    });
     setSavedAt(null);
     setServerError(null);
   }
@@ -112,19 +116,15 @@ export function AvailsForm({
       flash("truck");
       return;
     }
-    const firstUnanswered = ordered.find((s) => answers[s.id] === undefined);
-    if (firstUnanswered) {
-      setTriedToSubmit(true);
-      flash(`show-${firstUnanswered.id}`);
-      return;
-    }
 
     startSaving(async () => {
+      // Every show is sent: null means left blank, which clears any saved
+      // answer for it.
       const result = await submitAvails(
         ordered.map((s) => ({
           showId: s.id,
-          available: answers[s.id],
-          downToHelp: help[s.id] === true,
+          available: answers[s.id] ?? null,
+          downToHelp: answers[s.id] !== undefined && help[s.id] === true,
         })),
         hasTruck
       );
@@ -147,13 +147,8 @@ export function AvailsForm({
     );
   }
 
-  const missingError = !triedToSubmit
-    ? null
-    : hasTruck === null
-      ? "Answer whether you have a truck."
-      : missing > 0
-        ? `Mark in or out for ${missing} more show${missing === 1 ? "" : "s"}.`
-        : null;
+  const missingError =
+    triedToSubmit && hasTruck === null ? "Answer whether you have a truck." : null;
   const error = missingError ?? serverError;
 
   return (
@@ -197,6 +192,7 @@ export function AvailsForm({
         <div className="mx-auto w-full max-w-xl px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
           <p className="text-sm text-zinc-600">
             {answeredCount} of {ordered.length} answered
+            <span className="text-zinc-400"> · leave a show blank to skip it</span>
           </p>
           <div aria-live="polite" className="min-h-5 text-sm">
             {error && <p className="text-red-600">{error}</p>}
@@ -276,10 +272,16 @@ function ShowRow({
         </div>
       </div>
 
-      <label className="mt-2 flex w-fit cursor-pointer items-center gap-2 text-sm text-zinc-700">
+      {/* Only saved with an in/out answer, so it waits for one. */}
+      <label
+        className={`mt-2 flex w-fit items-center gap-2 text-sm ${
+          answer === undefined ? "text-zinc-400" : "cursor-pointer text-zinc-700"
+        }`}
+      >
         <input
           type="checkbox"
-          checked={downToHelp}
+          checked={downToHelp && answer !== undefined}
+          disabled={answer === undefined}
           onChange={onToggleHelp}
           className="size-4 accent-[#DA1717]"
         />

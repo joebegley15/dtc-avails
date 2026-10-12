@@ -22,7 +22,17 @@ const KNOWN_HEADERS = [
   "producer",
   "venue",
   "capacity",
+  "all_star",
 ] as const;
+
+// Other spellings people use for the all-star column.
+const HEADER_ALIASES: Record<string, string> = {
+  "all-star": "all_star",
+  "all star": "all_star",
+  allstar: "all_star",
+  is_all_star: "all_star",
+  star: "all_star",
+};
 
 // Only rows that would actually be imported can be checked or unchecked.
 const isSelectable = (r: PreviewRow) => r.show !== null && !r.duplicate;
@@ -60,7 +70,10 @@ export function BulkUploadForm({ producers }: { producers: ProducerOption[] }) {
     Papa.parse<Record<string, string>>(file, {
       header: true,
       skipEmptyLines: "greedy",
-      transformHeader: (h) => h.trim().toLowerCase(),
+      transformHeader: (h) => {
+        const key = h.trim().toLowerCase();
+        return HEADER_ALIASES[key] ?? key;
+      },
       complete: (results) => {
         const headers = results.meta.fields ?? [];
         const missing = REQUIRED_HEADERS.filter((h) => !headers.includes(h));
@@ -217,6 +230,7 @@ export function BulkUploadForm({ producers }: { producers: ProducerOption[] }) {
                 <th className="px-2 py-2">Time</th>
                 <th className="px-2 py-2">Venue</th>
                 <th className="px-2 py-2">Capacity</th>
+                <th className="px-2 py-2">All-star</th>
                 <th className="px-2 py-2">Producers</th>
               </tr>
             </thead>
@@ -317,6 +331,9 @@ function PreviewTableRow({
       </td>
       <td className="px-2 py-2">{show?.venue ?? raw.venue}</td>
       <td className="px-2 py-2">{show ? (show.capacity ?? "—") : raw.capacity}</td>
+      <td className="px-2 py-2">
+        {show ? (show.isAllStar ? <span className="text-[#DA1717]">★</span> : "—") : raw.all_star}
+      </td>
       <td className="px-2 py-2">
         {showPicker ? (
           <ProducerCellPicker

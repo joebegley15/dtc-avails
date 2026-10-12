@@ -25,6 +25,7 @@ const CSV_FIELDS = [
   "producer",
   "venue",
   "capacity",
+  "all_star",
 ] as const;
 
 export type CsvRow = Record<(typeof CSV_FIELDS)[number], string>;
@@ -108,6 +109,7 @@ async function validateRows(
         time: raw.time,
         venue: raw.venue,
         capacity: raw.capacity,
+        allStar: raw.all_star,
         ...(picked
           ? { producerIds: picked }
           : { producerNames: splitProducerNames(raw.producer) }),

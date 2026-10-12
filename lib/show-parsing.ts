@@ -10,6 +10,8 @@ export type ShowInput = {
   time: string;
   venue: string;
   capacity: string;
+  /** A checkbox value, or a CSV cell ("yes", "x", "★", blank for no). */
+  allStar?: boolean | string;
   /** Names from a CSV cell (already split), matched against `producers`. */
   producerNames?: string[];
   /** IDs from the multi-select, checked against `producers`. */
@@ -23,6 +25,7 @@ export type ParsedShow = {
   showTime: string; // HH:MM, 24-hour
   venue: string;
   capacity: number | null;
+  isAllStar: boolean;
   producerIds: number[];
 };
 
@@ -94,6 +97,17 @@ export function parseCapacity(
   if (!/^\d+$/.test(value)) return { ok: false };
   const n = Number(value);
   return n <= MAX_CAPACITY ? { ok: true, value: n } : { ok: false };
+}
+
+const ALL_STAR_YES = new Set(["true", "yes", "y", "1", "x", "star", "★", "all-star", "all star"]);
+const ALL_STAR_NO = new Set(["", "false", "no", "n", "0"]);
+
+/** A CSV all-star cell: blank means no. Returns null if it isn't yes or no. */
+export function parseAllStarCell(input: string): boolean | null {
+  const value = input.trim().toLowerCase();
+  if (ALL_STAR_YES.has(value)) return true;
+  if (ALL_STAR_NO.has(value)) return false;
+  return null;
 }
 
 /**
@@ -368,6 +382,14 @@ export function validateShowInput(
   const capacity = parseCapacity(input.capacity);
   if (!capacity.ok) errors.push(`Bad capacity: ${input.capacity.trim()}`);
 
+  const isAllStar =
+    typeof input.allStar === "string"
+      ? parseAllStarCell(input.allStar)
+      : (input.allStar ?? false);
+  if (isAllStar === null) {
+    errors.push(`Bad all-star value: ${String(input.allStar).trim()}`);
+  }
+
   const requested = input.producerNames ?? [];
   const resolved = input.producerIds
     ? resolveProducerIds(input.producerIds, producers)
@@ -380,7 +402,13 @@ export function validateShowInput(
     : ["Missing producer", ...resolved.errors];
   errors.push(...producerErrors);
 
-  if (errors.length > 0 || !showDate || !showTime || !capacity.ok) {
+  if (
+    errors.length > 0 ||
+    !showDate ||
+    !showTime ||
+    !capacity.ok ||
+    isAllStar === null
+  ) {
     return {
       show: null,
       producerIds: resolved.ids,
@@ -399,6 +427,7 @@ export function validateShowInput(
       showTime,
       venue,
       capacity: capacity.value,
+      isAllStar,
       producerIds: resolved.ids,
     },
     producerIds: resolved.ids,

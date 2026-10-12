@@ -39,14 +39,15 @@ export async function loadExistingShowKeys(
 export function insertShowQuery(show: ParsedShow) {
   return sql`
     with new_show as (
-      insert into shows (city, neighborhood, show_date, show_time, venue, capacity)
+      insert into shows (city, neighborhood, show_date, show_time, venue, capacity, is_all_star)
       select
         ${show.city}::text,
         ${show.neighborhood}::text,
         ${show.showDate}::date,
         ${show.showTime}::time,
         ${show.venue}::text,
-        ${show.capacity}::integer
+        ${show.capacity}::integer,
+        ${show.isAllStar}::boolean
       where not exists (
         select 1 from shows
         where show_date = ${show.showDate}::date
@@ -72,7 +73,8 @@ export function updateShowQueries(showId: number, show: ParsedShow) {
         show_date = ${show.showDate}::date,
         show_time = ${show.showTime}::time,
         venue = ${show.venue}::text,
-        capacity = ${show.capacity}::integer
+        capacity = ${show.capacity}::integer,
+        is_all_star = ${show.isAllStar}::boolean
       where id = ${showId}
     `,
     sql`delete from show_producers where show_id = ${showId}`,
