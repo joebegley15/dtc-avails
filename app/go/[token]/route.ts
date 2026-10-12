@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
-import { createSession } from "@/lib/session";
+import { createSession, getCurrentUser } from "@/lib/session";
 import { roleHomePath } from "@/lib/roles";
 import type { Role } from "@/lib/session";
 
@@ -25,6 +25,14 @@ export async function GET(
 
   if (!user) {
     return NextResponse.redirect(new URL("/go/invalid", request.url));
+  }
+
+  // Never swap an admin's session for someone else's: opening a user's link
+  // to test it would otherwise sign the admin out, and their open admin tabs
+  // would quietly start acting as that user.
+  const current = await getCurrentUser();
+  if (current && current.role === "admin" && current.id !== user.id) {
+    return NextResponse.redirect(new URL("/go/signed-in", request.url));
   }
 
   // Anyone who hasn't chosen their own password yet (a link-only comic, or an
