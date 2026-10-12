@@ -1,5 +1,6 @@
 // Pure planning and validation for the bulk link-user upload. No database
 // access: callers pass in the existing users to match against.
+import { matchHomeMarket } from "./markets";
 
 export const LINK_CSV_FIELDS = ["name", "home_market", "all_star"] as const;
 
@@ -82,6 +83,14 @@ export function planLinkUsers(
       errors.push(`Bad all-star value: ${raw.all_star.trim()}`);
     }
 
+    const homeMarketRaw = raw.home_market.trim();
+    const homeMarket = homeMarketRaw
+      ? matchHomeMarket(homeMarketRaw)
+      : DEFAULT_HOME_MARKET;
+    if (!homeMarket) {
+      errors.push(`Home market not in the list: ${homeMarketRaw}`);
+    }
+
     if (name) {
       const earlier = seenInFile.get(key);
       if (earlier !== undefined) {
@@ -110,7 +119,7 @@ export function planLinkUsers(
 
     const user: PlannedLinkUser = {
       name,
-      homeMarket: raw.home_market.trim() || DEFAULT_HOME_MARKET,
+      homeMarket: homeMarket ?? DEFAULT_HOME_MARKET,
       allStar: allStar === "bad" ? false : allStar,
     };
 

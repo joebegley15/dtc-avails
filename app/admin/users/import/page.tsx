@@ -28,6 +28,10 @@ export default async function ImportUsersPage() {
           <li>Required: name, email. Everything else is optional.</li>
           <li>Role: comic (the default) or producer.</li>
           <li>
+            Home market must be one of the 20 cities in the Users dropdown
+            (&ldquo;Austin&rdquo; or &ldquo;Austin, TX&rdquo; both work).
+          </li>
+          <li>
             An email that already exists is updated (name, home market,
             all-star). Its password is never changed. Blank cells
             leave existing values alone.

@@ -26,6 +26,10 @@ export default async function BulkLinksPage() {
           <li>Required: name. Optional: home_market, all_star.</li>
           <li>Home market defaults to Austin, TX when blank.</li>
           <li>
+            Home market must be one of the 20 cities in the Users dropdown
+            (&ldquo;Austin&rdquo; or &ldquo;Austin, TX&rdquo; both work).
+          </li>
+          <li>
             A name that already matches a comic reuses their existing link
             instead of making a new one.
           </li>

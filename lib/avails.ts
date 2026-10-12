@@ -22,14 +22,13 @@ export type VisibleShow = {
  * The single rule for which shows a user may see and answer, used by both the
  * page and the submit action:
  *   - show_date is today or later
- *   - all-star shows only for all-star users, and for admins
+ *   - all-star shows only for all-star users (admins included: an admin
+ *     submitting avails is a comedian like any other, so needs the star)
  *
  * Venue and capacity are deliberately never selected, so they cannot reach the
  * client.
  */
 export async function loadVisibleShows(user: CurrentUser): Promise<VisibleShow[]> {
-  const canSeeAllStar = user.role === "admin" || user.is_all_star;
-
   return (await sql`
     select
       s.id, s.city, s.neighborhood,
@@ -40,7 +39,7 @@ export async function loadVisibleShows(user: CurrentUser): Promise<VisibleShow[]
     from shows s
     left join avails a on a.show_id = s.id and a.user_id = ${user.id}
     where s.show_date >= (now() at time zone ${AVAILS_TIME_ZONE}::text)::date
-      and (${canSeeAllStar}::boolean or not s.is_all_star)
+      and (${user.is_all_star}::boolean or not s.is_all_star)
     order by s.show_date, s.show_time, s.id
   `) as VisibleShow[];
 }

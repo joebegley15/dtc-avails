@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { HomeMarketSelect } from "@/components/home-market-select";
 import { acceptInvite, type AcceptInviteState } from "./actions";
 
 const initialState: AcceptInviteState = {};
@@ -26,10 +27,11 @@ export function SignupForm({ token }: { token: string }) {
         defaultValue={state.values?.email}
         className={inputClass}
       />
-      <input
+      <HomeMarketSelect
+        // Keyed on the echoed value: a select only reads defaultValue on mount.
+        key={state.values?.homeMarket ?? ""}
         name="homeMarket"
-        placeholder="Home market (optional)"
-        defaultValue={state.values?.homeMarket}
+        defaultValue={state.values?.homeMarket ?? ""}
         className={inputClass}
       />
       <input

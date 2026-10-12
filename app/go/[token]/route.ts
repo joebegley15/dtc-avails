@@ -18,17 +18,19 @@ export async function GET(
   // constant-time. Both outcomes below redirect either way, so this never
   // reveals whether the token existed.
   const rows = (await sql`
-    select id, role from users where access_token = ${token}
-  `) as { id: number; role: Role }[];
+    select id, role, must_change_password from users where access_token = ${token}
+  `) as { id: number; role: Role; must_change_password: boolean }[];
   const user = rows[0];
 
   if (!user) {
     return NextResponse.redirect(new URL("/go/invalid", request.url));
   }
 
-  // Link users never set a password, so must_change_password is irrelevant
-  // to them; createLinkUsers() and regenerateAccessToken() both keep it
-  // false, so requireUser() never routes them to /change-password later.
+  // Two kinds of link land here. Link-only comics never set a password and
+  // keep must_change_password false, so they go straight home. An invite
+  // link for a not-yet-activated user has it true: they choose a password
+  // first, which also clears the token (see changePassword).
   await createSession(user.id);
-  return NextResponse.redirect(new URL(roleHomePath(user.role), request.url));
+  const next = user.must_change_password ? "/change-password" : roleHomePath(user.role);
+  return NextResponse.redirect(new URL(next, request.url));
 }

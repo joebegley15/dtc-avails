@@ -6,6 +6,7 @@ import { sql } from "@/lib/db";
 import { DEFAULT_PASSWORD, requireAdmin } from "@/lib/auth";
 import { buildLink, generateToken } from "@/lib/tokens";
 import type { Role } from "@/lib/session";
+import { matchHomeMarket } from "@/lib/markets";
 
 const MIN_PASSWORD_LENGTH = 6;
 // bcrypt only uses the first 72 bytes; reject longer input instead of
@@ -51,13 +52,16 @@ export async function createUser(
   if (!ROLES.includes(role)) {
     return { error: "Invalid role." };
   }
+  if (homeMarket && !matchHomeMarket(homeMarket)) {
+    return { error: "Pick a home market from the list." };
+  }
 
   const passwordHash = await bcrypt.hash(password, 10);
 
   try {
     await sql`
       insert into users (name, email, password_hash, role, home_market, is_all_star)
-      values (${name}, ${email}, ${passwordHash}, ${role}, ${homeMarket || null}, ${isAllStar})
+      values (${name}, ${email}, ${passwordHash}, ${role}, ${matchHomeMarket(homeMarket)}, ${isAllStar})
     `;
   } catch (err) {
     if (err instanceof Error && "code" in err && err.code === "23505") {
@@ -161,7 +165,11 @@ export async function regenerateAccessToken(
   const token = generateToken();
   const updated = (await sql`
     update users
-    set access_token = ${token}, token_created_at = now(), must_change_password = false
+    set access_token = ${token}, token_created_at = now(),
+      -- Link-only users (no password) never change one. A not-yet-activated
+      -- user with a password keeps the flag, so the new link still makes
+      -- them choose one.
+      must_change_password = must_change_password and password_hash is not null
     where id = ${userId} and access_token is not null
     returning id
   `) as { id: number }[];
@@ -207,4 +215,88 @@ export async function deleteUser(userId: number): Promise<DeleteUserResult> {
 
   revalidatePath("/admin/users");
   return { ok: true, message: "Deleted." };
+}
+
+export type UpdateUserResult = { ok: boolean; error?: string };
+
+function validUserId(userId: unknown): userId is number {
+  return typeof userId === "number" && Number.isInteger(userId) && userId > 0;
+}
+
+/** Sets (or clears, with "") a user's home market. Only listed markets. */
+export async function setHomeMarket(
+  userId: number,
+  homeMarket: string
+): Promise<UpdateUserResult> {
+  await requireAdmin();
+
+  if (!validUserId(userId) || typeof homeMarket !== "string") {
+    return { ok: false, error: "Invalid request." };
+  }
+  const market = homeMarket ? matchHomeMarket(homeMarket) : null;
+  if (homeMarket && !market) {
+    return { ok: false, error: "Pick a home market from the list." };
+  }
+
+  const updated = await sql`
+    update users set home_market = ${market} where id = ${userId} returning id
+  `;
+  if (updated.length === 0) return { ok: false, error: "User not found." };
+
+  revalidatePath("/admin/users");
+  return { ok: true };
+}
+
+/** Adds or removes a user's all-star star. */
+export async function setAllStar(
+  userId: number,
+  isAllStar: boolean
+): Promise<UpdateUserResult> {
+  await requireAdmin();
+
+  if (!validUserId(userId) || typeof isAllStar !== "boolean") {
+    return { ok: false, error: "Invalid request." };
+  }
+
+  const updated = await sql`
+    update users set is_all_star = ${isAllStar} where id = ${userId} returning id
+  `;
+  if (updated.length === 0) return { ok: false, error: "User not found." };
+
+  revalidatePath("/admin/users");
+  return { ok: true };
+}
+
+export type InviteLinkResult = { ok: boolean; link?: string; error?: string };
+
+/**
+ * Gives a not-yet-activated user (never set their own password) a sign-in
+ * link, or returns the one they already have. Opening it signs them in, and
+ * because must_change_password is set for anyone with an email, they land on
+ * /change-password. Setting a password there clears the token, so the link
+ * is one-time. Users without an email are link-only comics: their link stays.
+ */
+export async function getInviteLink(userId: number): Promise<InviteLinkResult> {
+  await requireAdmin();
+
+  if (!validUserId(userId)) return { ok: false, error: "Invalid user." };
+
+  const token = generateToken();
+  const rows = (await sql`
+    update users
+    set access_token = coalesce(access_token, ${token}),
+        token_created_at = coalesce(token_created_at, now()),
+        must_change_password = must_change_password or email is not null
+    where id = ${userId}
+      and role <> 'admin'
+      and (must_change_password or password_hash is null)
+    returning access_token
+  `) as { access_token: string }[];
+
+  if (rows.length === 0) {
+    return { ok: false, error: "This user has already activated their account." };
+  }
+
+  revalidatePath("/admin/users");
+  return { ok: true, link: buildLink(rows[0].access_token) };
 }

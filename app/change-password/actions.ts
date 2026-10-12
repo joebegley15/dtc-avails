@@ -38,7 +38,9 @@ export async function changePassword(
   const passwordHash = await bcrypt.hash(password, 10);
   await sql`
     update users
-    set password_hash = ${passwordHash}, must_change_password = false
+    set password_hash = ${passwordHash}, must_change_password = false,
+      -- Any invite link that got them here is one-time: it stops working now.
+      access_token = null, token_created_at = null
     where id = ${user.id}
   `;
 

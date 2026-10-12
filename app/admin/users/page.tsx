@@ -7,6 +7,11 @@ import { DeleteUserButton } from "./delete-user-button";
 import { LinkCell } from "./link-cell";
 import { ResetPasswordButton } from "./reset-password-button";
 import { ResetToDefaultButton } from "./reset-to-default-button";
+import { matchHomeMarket } from "@/lib/markets";
+import { AllStarToggle, HomeMarketCell, InviteLinkButton } from "./user-cells";
+import { OTHER_MARKET, UserFilters } from "./user-filters";
+
+const ROLES = ["admin", "producer", "comic"];
 
 type UserRow = {
   id: number;
@@ -16,16 +21,40 @@ type UserRow = {
   home_market: string | null;
   is_all_star: boolean;
   access_token: string | null;
+  activated: boolean;
 };
 
-export default async function AdminUsersPage() {
+export default async function AdminUsersPage({
+  searchParams,
+}: PageProps<"/admin/users">) {
   await requireAdmin();
 
-  const users = (await sql`
-    select id, name, email, role, home_market, is_all_star, access_token
+  // ?role= and ?market= filter the table. Unknown values are ignored.
+  const params = await searchParams;
+  const roleParam = typeof params.role === "string" ? params.role : "";
+  const marketParam = typeof params.market === "string" ? params.market : "";
+  const role = ROLES.includes(roleParam) ? roleParam : "";
+  const market =
+    marketParam === OTHER_MARKET ? OTHER_MARKET : (matchHomeMarket(marketParam) ?? "");
+
+  const allUsers = (await sql`
+    select id, name, email, role, home_market, is_all_star, access_token,
+      -- Has chosen their own password, or is a link-only user (no password).
+      not (must_change_password or (password_hash is null and access_token is null)) as activated
     from users
     order by role, name
   `) as UserRow[];
+
+  // Matched through matchHomeMarket so values saved before the dropdown
+  // ("Austin") still count as their listed city ("Austin, TX").
+  const filtered = allUsers.filter((u) => {
+    if (role && u.role !== role) return false;
+    if (market) {
+      const userMarket = u.home_market ? matchHomeMarket(u.home_market) : null;
+      return market === OTHER_MARKET ? userMarket === null : userMarket === market;
+    }
+    return true;
+  });
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-10">
@@ -60,7 +89,15 @@ export default async function AdminUsersPage() {
 
       <AddUserForm />
 
-      <div className="mt-8">
+      <UserFilters
+        key={`${role}|${market}`}
+        role={role}
+        market={market}
+        shown={filtered.length}
+        total={allUsers.length}
+      />
+
+      <div className="mt-4">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-black/10 text-xs uppercase tracking-wide text-zinc-500">
@@ -74,18 +111,32 @@ export default async function AdminUsersPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-black/5">
-            {users.map((u) => (
+            {filtered.map((u) => (
               <tr key={u.id}>
                 <td className="py-2 pr-4 font-medium text-zinc-950">{u.name}</td>
                 <td className="break-all py-2 pr-4 text-zinc-600">{u.email ?? "—"}</td>
                 <td className="py-2 pr-4 capitalize text-zinc-600">{u.role}</td>
-                <td className="py-2 pr-4 text-zinc-600">{u.home_market ?? "—"}</td>
                 <td className="py-2 pr-4">
-                  {u.is_all_star && <span className="text-[#DA1717]">★</span>}
+                  <HomeMarketCell
+                    // Remount after a save so defaultValue tracks the server.
+                    key={u.home_market ?? ""}
+                    userId={u.id}
+                    homeMarket={u.home_market}
+                  />
                 </td>
                 <td className="py-2 pr-4">
+                  <AllStarToggle userId={u.id} isAllStar={u.is_all_star} />
+                </td>
+                <td className="py-2 pr-4">
+                  {!u.activated && (
+                    <span className="mb-1 block text-xs font-medium text-amber-700">
+                      Not activated
+                    </span>
+                  )}
                   {u.access_token ? (
                     <LinkCell userId={u.id} link={buildLink(u.access_token)} />
+                  ) : !u.activated && u.role !== "admin" ? (
+                    <InviteLinkButton userId={u.id} />
                   ) : (
                     <span className="text-zinc-400">—</span>
                   )}
@@ -101,10 +152,10 @@ export default async function AdminUsersPage() {
                 </td>
               </tr>
             ))}
-            {users.length === 0 && (
+            {filtered.length === 0 && (
               <tr>
                 <td colSpan={7} className="py-4 text-center text-zinc-500">
-                  No users yet.
+                  {allUsers.length === 0 ? "No users yet." : "No users match these filters."}
                 </td>
               </tr>
             )}

@@ -14,8 +14,6 @@ export type AvailsShow = {
   isTravel: boolean;
 };
 
-type CityGroup = { city: string; shows: AvailsShow[] };
-
 const noopSubscribe = () => () => {};
 
 // Timestamps render in the viewer's own timezone. The server can't know it,
@@ -40,23 +38,11 @@ function formatTime(date: Date): string {
   return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
-/** By city (alphabetical); within a city by date, then time. */
-function groupByCity(shows: AvailsShow[]): CityGroup[] {
-  const groups = new Map<string, CityGroup>();
-  for (const show of shows) {
-    const key = show.city.trim().toLowerCase();
-    const group = groups.get(key) ?? { city: show.city.trim(), shows: [] };
-    group.shows.push(show);
-    groups.set(key, group);
-  }
-  return [...groups.values()]
-    .sort((a, b) => a.city.localeCompare(b.city, "en", { sensitivity: "base" }))
-    .map((g) => ({
-      ...g,
-      shows: g.shows.sort(
-        (a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time) || a.id - b.id
-      ),
-    }));
+/** By date, then time. */
+function byDate(shows: AvailsShow[]): AvailsShow[] {
+  return [...shows].sort(
+    (a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time) || a.id - b.id
+  );
 }
 
 export function AvailsForm({
@@ -77,9 +63,8 @@ export function AvailsForm({
   const [saving, startSaving] = useTransition();
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const groups = useMemo(() => groupByCity(shows), [shows]);
   // Display order, which is also the order "first unanswered" is judged in.
-  const ordered = useMemo(() => groups.flatMap((g) => g.shows), [groups]);
+  const ordered = useMemo(() => byDate(shows), [shows]);
 
   const answeredCount = ordered.filter((s) => answers[s.id] !== undefined).length;
   const missing = ordered.length - answeredCount;
@@ -149,26 +134,17 @@ export function AvailsForm({
           </p>
         )}
 
-        <div className="flex flex-col gap-6">
-          {groups.map((group) => (
-            <section key={group.city.toLowerCase()}>
-              <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
-                {group.city}
-              </h2>
-              <ul className="flex flex-col gap-2">
-                {group.shows.map((show) => (
-                  <ShowRow
-                    key={show.id}
-                    show={show}
-                    answer={answers[show.id]}
-                    highlighted={highlightId === show.id}
-                    onAnswer={(available) => answer(show.id, available)}
-                  />
-                ))}
-              </ul>
-            </section>
+        <ul className="flex flex-col gap-2">
+          {ordered.map((show) => (
+            <ShowRow
+              key={show.id}
+              show={show}
+              answer={answers[show.id]}
+              highlighted={highlightId === show.id}
+              onAnswer={(available) => answer(show.id, available)}
+            />
           ))}
-        </div>
+        </ul>
       </main>
 
       <div className="sticky bottom-0 border-t border-black/10 bg-white">
@@ -209,7 +185,8 @@ function ShowRow({
   highlighted: boolean;
   onAnswer: (available: boolean) => void;
 }) {
-  const title = show.neighborhood?.trim() || show.city;
+  const neighborhood = show.neighborhood?.trim();
+  const title = neighborhood ? `${show.city} · ${neighborhood}` : show.city;
   const when = `${formatShowDate(show.date)}, ${formatShowTime(show.time)}`;
 
   return (

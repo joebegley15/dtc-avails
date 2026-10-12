@@ -1,5 +1,6 @@
 // Pure planning and validation for the bulk user import. No database access:
 // callers pass in the existing users.
+import { matchHomeMarket } from "./markets";
 
 export const USER_CSV_FIELDS = [
   "name",
@@ -101,6 +102,11 @@ export function planUserImport(
       errors.push(`Bad role: ${raw.role.trim()}`);
     }
 
+    const market = homeMarket ? matchHomeMarket(homeMarket) : null;
+    if (homeMarket && !market) {
+      errors.push(`Home market not in the list: ${homeMarket}`);
+    }
+
     if (allStar === "bad") errors.push(`Bad all-star value: ${raw.is_all_star.trim()}`);
 
     let match: ExistingUser | undefined;
@@ -130,7 +136,7 @@ export function planUserImport(
       name,
       email,
       role,
-      homeMarket: homeMarket || null,
+      homeMarket: market,
       isAllStar: allStar === "bad" ? null : allStar,
     };
     return { ...base, action: match ? "update" : "add", user, errors };
