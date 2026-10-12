@@ -46,7 +46,9 @@ export async function submitAvails(
     }
   }
 
-  const visibleIds = new Set((await loadVisibleShows(user)).map((s) => s.id));
+  const visibleIds = new Set(
+    (await loadVisibleShows(user)).flatMap((s) => (s.locked ? [] : [s.id]))
+  );
   const allowed = [...requested].filter(([showId]) => visibleIds.has(showId));
   const answered = allowed.flatMap(([showId, { available, downToHelp }]) =>
     available === null ? [] : [{ showId, available, downToHelp }]

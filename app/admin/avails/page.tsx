@@ -1,5 +1,6 @@
 import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
+import { COUNTED_AVAIL } from "@/lib/avails";
 import { formatShowDateTime } from "@/lib/format";
 import { DownloadCsvButton } from "./download-csv-button";
 
@@ -39,8 +40,11 @@ export default async function AdminAvailsPage() {
   const avails =
     showIds.length > 0
       ? ((await sql`
-          select user_id, show_id, available from avails
-          where show_id = any(${showIds})
+          select a.user_id, a.show_id, a.available
+          from avails a
+          join shows s on s.id = a.show_id
+          join users u on u.id = a.user_id
+          where a.show_id = any(${showIds}) and ${sql.unsafe(COUNTED_AVAIL)}
         `) as AvailRow[])
       : [];
 

@@ -22,6 +22,7 @@ export default async function AvailsPage() {
     date: s.show_date,
     time: s.show_time,
     isAllStar: s.is_all_star,
+    locked: s.locked,
     isTravel: isTravelShow(s.city, profile.homeMarket),
   }));
 

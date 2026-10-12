@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
+import { COUNTED_AVAIL } from "@/lib/avails";
 import {
   ProducerShowsView,
   type ProducerOption,
@@ -110,19 +111,22 @@ export default async function ProducerPage({
   if (showIds.length > 0) {
     [availsCountRows, answeredComicRows] = (await Promise.all([
       sql`
-        select show_id,
-          count(*) filter (where available)::int as in_count,
-          count(*) filter (where not available)::int as out_count
-        from avails
-        where show_id = any(${showIds})
-        group by show_id
+        select a.show_id,
+          count(*) filter (where a.available)::int as in_count,
+          count(*) filter (where not a.available)::int as out_count
+        from avails a
+        join shows s on s.id = a.show_id
+        join users u on u.id = a.user_id
+        where a.show_id = any(${showIds}) and ${sql.unsafe(COUNTED_AVAIL)}
+        group by a.show_id
       `,
       sql`
         select a.show_id, a.available, a.down_to_help,
           u.id, u.name, u.email, u.home_market, u.is_all_star, u.has_truck
         from avails a
+        join shows s on s.id = a.show_id
         join users u on u.id = a.user_id
-        where a.show_id = any(${showIds})
+        where a.show_id = any(${showIds}) and ${sql.unsafe(COUNTED_AVAIL)}
         order by u.name
       `,
     ])) as unknown as [AvailsCountRow[], AnsweredComicRow[]];

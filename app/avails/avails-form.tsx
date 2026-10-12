@@ -11,6 +11,8 @@ export type AvailsShow = {
   date: string; // YYYY-MM-DD
   time: string; // HH:MM
   isAllStar: boolean;
+  /** All-star show and this user isn't an all-star: shown greyed out. */
+  locked: boolean;
   isTravel: boolean;
 };
 
@@ -72,7 +74,8 @@ export function AvailsForm({
   // Display order, which is also the order "first unanswered" is judged in.
   const ordered = useMemo(() => byDate(shows), [shows]);
 
-  const answeredCount = ordered.filter((s) => answers[s.id] !== undefined).length;
+  const open = ordered.filter((s) => !s.locked);
+  const answeredCount = open.filter((s) => answers[s.id] !== undefined).length;
   const lastSubmittedText = useLocalDateTime(lastSubmitted);
 
   function answer(showId: number, available: boolean) {
@@ -121,7 +124,7 @@ export function AvailsForm({
       // Every show is sent: null means left blank, which clears any saved
       // answer for it.
       const result = await submitAvails(
-        ordered.map((s) => ({
+        open.map((s) => ({
           showId: s.id,
           available: answers[s.id] ?? null,
           downToHelp: answers[s.id] !== undefined && help[s.id] === true,
@@ -191,7 +194,7 @@ export function AvailsForm({
       <div className="sticky bottom-0 border-t border-black/10 bg-white">
         <div className="mx-auto w-full max-w-xl px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
           <p className="text-sm text-zinc-600">
-            {answeredCount} of {ordered.length} answered
+            {answeredCount} of {open.length} answered
             <span className="text-zinc-400"> · leave a show blank to skip it</span>
           </p>
           <div aria-live="polite" className="min-h-5 text-sm">
@@ -231,6 +234,8 @@ function ShowRow({
   onAnswer: (available: boolean) => void;
   onToggleHelp: () => void;
 }) {
+  if (show.locked) return <LockedShowRow show={show} />;
+
   const neighborhood = show.neighborhood?.trim();
   const title = neighborhood ? `${show.city} · ${neighborhood}` : show.city;
   const when = `${formatShowDate(show.date)}, ${formatShowTime(show.time)}`;
@@ -287,6 +292,23 @@ function ShowRow({
         />
         Down to help
       </label>
+    </li>
+  );
+}
+
+/** An all-star show seen by someone who isn't an all-star: nothing to answer. */
+function LockedShowRow({ show }: { show: AvailsShow }) {
+  const neighborhood = show.neighborhood?.trim();
+  const title = neighborhood ? `${show.city} · ${neighborhood}` : show.city;
+  const when = `${formatShowDate(show.date)}, ${formatShowTime(show.time)}`;
+
+  return (
+    <li
+      id={`show-${show.id}`}
+      className="rounded-md border border-black/10 bg-zinc-50 px-4 py-3 text-zinc-400"
+    >
+      <p className="font-medium">★ {title}</p>
+      <p className="text-sm">{when}</p>
     </li>
   );
 }
