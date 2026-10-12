@@ -16,6 +16,8 @@ export type VisibleShow = {
   is_all_star: boolean;
   /** The user's saved answer, or null if they haven't answered. */
   available: boolean | null;
+  /** Offered to help at this show. False when unanswered. */
+  down_to_help: boolean;
 };
 
 /**
@@ -35,7 +37,8 @@ export async function loadVisibleShows(user: CurrentUser): Promise<VisibleShow[]
       to_char(s.show_date, 'YYYY-MM-DD') as show_date,
       to_char(s.show_time, 'HH24:MI') as show_time,
       s.is_all_star,
-      a.available
+      a.available,
+      coalesce(a.down_to_help, false) as down_to_help
     from shows s
     left join avails a on a.show_id = s.id and a.user_id = ${user.id}
     where s.show_date >= (now() at time zone ${AVAILS_TIME_ZONE}::text)::date
@@ -46,6 +49,8 @@ export async function loadVisibleShows(user: CurrentUser): Promise<VisibleShow[]
 
 export type AvailsProfile = {
   homeMarket: string | null;
+  /** Null until the user answers "Do you have a truck?" */
+  hasTruck: boolean | null;
   /** ISO timestamp of the user's most recent submission, or null. */
   lastSubmittedAt: string | null;
 };
@@ -54,17 +59,23 @@ export async function loadAvailsProfile(user: CurrentUser): Promise<AvailsProfil
   const rows = (await sql`
     select
       home_market,
+      has_truck,
       (
         select to_char(max(submitted_at) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
         from avails where user_id = u.id
       ) as last_submitted_at
     from users u
     where u.id = ${user.id}
-  `) as { home_market: string | null; last_submitted_at: string | null }[];
+  `) as {
+    home_market: string | null;
+    has_truck: boolean | null;
+    last_submitted_at: string | null;
+  }[];
 
   const row = rows[0];
   return {
     homeMarket: row?.home_market?.trim() || null,
+    hasTruck: row?.has_truck ?? null,
     lastSubmittedAt: row?.last_submitted_at ?? null,
   };
 }

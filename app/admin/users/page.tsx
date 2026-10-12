@@ -20,6 +20,7 @@ type UserRow = {
   role: "admin" | "producer" | "comic";
   home_market: string | null;
   is_all_star: boolean;
+  has_truck: boolean | null;
   access_token: string | null;
   activated: boolean;
 };
@@ -38,7 +39,7 @@ export default async function AdminUsersPage({
     marketParam === OTHER_MARKET ? OTHER_MARKET : (matchHomeMarket(marketParam) ?? "");
 
   const allUsers = (await sql`
-    select id, name, email, role, home_market, is_all_star, access_token,
+    select id, name, email, role, home_market, is_all_star, has_truck, access_token,
       -- Has chosen their own password, or is a link-only user (no password).
       not (must_change_password or (password_hash is null and access_token is null)) as activated
     from users
@@ -106,6 +107,7 @@ export default async function AdminUsersPage({
               <th className="py-2 pr-4">Role</th>
               <th className="py-2 pr-4">Home market</th>
               <th className="py-2 pr-4">All-star</th>
+              <th className="py-2 pr-4">Truck</th>
               <th className="py-2 pr-4">Link</th>
               <th className="py-2"></th>
             </tr>
@@ -126,6 +128,9 @@ export default async function AdminUsersPage({
                 </td>
                 <td className="py-2 pr-4">
                   <AllStarToggle userId={u.id} isAllStar={u.is_all_star} />
+                </td>
+                <td className="py-2 pr-4 text-zinc-600">
+                  {u.has_truck === null ? "—" : u.has_truck ? "Yes" : "No"}
                 </td>
                 <td className="py-2 pr-4">
                   {!u.activated && (
@@ -154,7 +159,7 @@ export default async function AdminUsersPage({
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="py-4 text-center text-zinc-500">
+                <td colSpan={8} className="py-4 text-center text-zinc-500">
                   {allUsers.length === 0 ? "No users yet." : "No users match these filters."}
                 </td>
               </tr>

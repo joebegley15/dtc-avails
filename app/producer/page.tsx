@@ -29,11 +29,13 @@ type AvailsCountRow = {
 type AnsweredComicRow = {
   show_id: number;
   available: boolean;
+  down_to_help: boolean;
   id: number;
   name: string;
   email: string | null;
   home_market: string | null;
   is_all_star: boolean;
+  has_truck: boolean | null;
 };
 
 const SHOW_COLUMNS = `
@@ -116,7 +118,8 @@ export default async function ProducerPage({
         group by show_id
       `,
       sql`
-        select a.show_id, a.available, u.id, u.name, u.email, u.home_market, u.is_all_star
+        select a.show_id, a.available, a.down_to_help,
+          u.id, u.name, u.email, u.home_market, u.is_all_star, u.has_truck
         from avails a
         join users u on u.id = a.user_id
         where a.show_id = any(${showIds})
@@ -149,6 +152,8 @@ export default async function ProducerPage({
       isAllStar: c.is_all_star,
       isTravel: c.home_market ? cityPart(c.home_market) !== cityPart(s.city) : false,
       available: c.available,
+      downToHelp: c.down_to_help,
+      hasTruck: c.has_truck === true,
     }));
 
     const availableComics = answered

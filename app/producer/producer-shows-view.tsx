@@ -29,6 +29,8 @@ export type ComicAnswer = {
   homeMarket: string | null;
   isAllStar: boolean;
   isTravel: boolean;
+  downToHelp: boolean;
+  hasTruck: boolean;
 };
 
 function formatShowDateTime(dateStr: string, timeStr: string): string {
@@ -82,6 +84,16 @@ function ComicLine({ comic: c, muted = false }: { comic: ComicAnswer; muted?: bo
       {!muted && c.isTravel && (
         <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800">
           Travel
+        </span>
+      )}
+      {c.downToHelp && (
+        <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-medium text-emerald-800">
+          Down to help
+        </span>
+      )}
+      {c.hasTruck && (
+        <span className="rounded bg-sky-100 px-1.5 py-0.5 text-xs font-medium text-sky-800">
+          Truck
         </span>
       )}
       {!muted && c.email && <span className="text-zinc-500">{c.email}</span>}

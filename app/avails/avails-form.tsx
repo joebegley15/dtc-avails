@@ -48,18 +48,24 @@ function byDate(shows: AvailsShow[]): AvailsShow[] {
 export function AvailsForm({
   shows,
   initialAnswers,
+  initialHelp,
+  initialHasTruck,
   lastSubmittedAt,
 }: {
   shows: AvailsShow[];
   initialAnswers: Record<number, boolean>;
+  initialHelp: Record<number, boolean>;
+  initialHasTruck: boolean | null;
   lastSubmittedAt: string | null;
 }) {
   const [answers, setAnswers] = useState<Record<number, boolean>>(initialAnswers);
+  const [help, setHelp] = useState<Record<number, boolean>>(initialHelp);
+  const [hasTruck, setHasTruck] = useState<boolean | null>(initialHasTruck);
   const [lastSubmitted, setLastSubmitted] = useState(lastSubmittedAt);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const [triedToSubmit, setTriedToSubmit] = useState(false);
-  const [highlightId, setHighlightId] = useState<number | null>(null);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -78,27 +84,49 @@ export function AvailsForm({
     setServerError(null);
   }
 
-  function flash(showId: number) {
-    const el = document.getElementById(`show-${showId}`);
+  function toggleHelp(showId: number) {
+    setHelp((prev) => ({ ...prev, [showId]: !prev[showId] }));
+    setSavedAt(null);
+    setServerError(null);
+  }
+
+  function answerTruck(value: boolean) {
+    setHasTruck(value);
+    setSavedAt(null);
+    setServerError(null);
+  }
+
+  function flash(elementId: string) {
+    const el = document.getElementById(elementId);
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     el?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
-    setHighlightId(showId);
+    setHighlightId(elementId);
     if (highlightTimer.current) clearTimeout(highlightTimer.current);
     highlightTimer.current = setTimeout(() => setHighlightId(null), 1600);
   }
 
   function submit() {
     setServerError(null);
+    if (hasTruck === null) {
+      setTriedToSubmit(true);
+      flash("truck");
+      return;
+    }
     const firstUnanswered = ordered.find((s) => answers[s.id] === undefined);
     if (firstUnanswered) {
       setTriedToSubmit(true);
-      flash(firstUnanswered.id);
+      flash(`show-${firstUnanswered.id}`);
       return;
     }
 
     startSaving(async () => {
       const result = await submitAvails(
-        ordered.map((s) => ({ showId: s.id, available: answers[s.id] }))
+        ordered.map((s) => ({
+          showId: s.id,
+          available: answers[s.id],
+          downToHelp: help[s.id] === true,
+        })),
+        hasTruck
       );
       if (result.ok) {
         const now = new Date();
@@ -119,10 +147,13 @@ export function AvailsForm({
     );
   }
 
-  const missingError =
-    triedToSubmit && missing > 0
-      ? `Mark in or out for ${missing} more show${missing === 1 ? "" : "s"}.`
-      : null;
+  const missingError = !triedToSubmit
+    ? null
+    : hasTruck === null
+      ? "Answer whether you have a truck."
+      : missing > 0
+        ? `Mark in or out for ${missing} more show${missing === 1 ? "" : "s"}.`
+        : null;
   const error = missingError ?? serverError;
 
   return (
@@ -134,14 +165,29 @@ export function AvailsForm({
           </p>
         )}
 
+        <div
+          id="truck"
+          className={`mb-4 flex items-center justify-between gap-3 rounded-md border border-black/10 px-4 py-3 transition-colors duration-500 ${
+            highlightId === "truck" ? "bg-red-50" : "bg-white"
+          }`}
+        >
+          <p className="font-medium text-zinc-950">Do you have a truck?</p>
+          <div role="group" aria-label="Do you have a truck?" className="flex shrink-0 gap-2">
+            <Pill label="Yes" selected={hasTruck === true} tone="in" onClick={() => answerTruck(true)} />
+            <Pill label="No" selected={hasTruck === false} tone="out" onClick={() => answerTruck(false)} />
+          </div>
+        </div>
+
         <ul className="flex flex-col gap-2">
           {ordered.map((show) => (
             <ShowRow
               key={show.id}
               show={show}
               answer={answers[show.id]}
-              highlighted={highlightId === show.id}
+              downToHelp={help[show.id] === true}
+              highlighted={highlightId === `show-${show.id}`}
               onAnswer={(available) => answer(show.id, available)}
+              onToggleHelp={() => toggleHelp(show.id)}
             />
           ))}
         </ul>
@@ -177,13 +223,17 @@ export function AvailsForm({
 function ShowRow({
   show,
   answer,
+  downToHelp,
   highlighted,
   onAnswer,
+  onToggleHelp,
 }: {
   show: AvailsShow;
   answer: boolean | undefined;
+  downToHelp: boolean;
   highlighted: boolean;
   onAnswer: (available: boolean) => void;
+  onToggleHelp: () => void;
 }) {
   const neighborhood = show.neighborhood?.trim();
   const title = neighborhood ? `${show.city} · ${neighborhood}` : show.city;
@@ -225,6 +275,16 @@ function ShowRow({
           <Pill label="Out" selected={answer === false} tone="out" onClick={() => onAnswer(false)} />
         </div>
       </div>
+
+      <label className="mt-2 flex w-fit cursor-pointer items-center gap-2 text-sm text-zinc-700">
+        <input
+          type="checkbox"
+          checked={downToHelp}
+          onChange={onToggleHelp}
+          className="size-4 accent-[#DA1717]"
+        />
+        Down to help
+      </label>
     </li>
   );
 }

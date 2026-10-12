@@ -28,8 +28,10 @@ export default async function AvailsPage() {
   const tabbed = hasTabs(user);
 
   const initialAnswers: Record<number, boolean> = {};
+  const initialHelp: Record<number, boolean> = {};
   for (const s of visible) {
     if (s.available !== null) initialAnswers[s.id] = s.available;
+    if (s.down_to_help) initialHelp[s.id] = true;
   }
 
   return (
@@ -66,6 +68,8 @@ export default async function AvailsPage() {
       <AvailsForm
         shows={shows}
         initialAnswers={initialAnswers}
+        initialHelp={initialHelp}
+        initialHasTruck={profile.hasTruck}
         lastSubmittedAt={profile.lastSubmittedAt}
       />
     </div>
