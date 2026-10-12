@@ -13,11 +13,16 @@ const selectClass =
 export function UserFilters({
   role,
   market,
+  status,
+  activated,
   shown,
   total,
 }: {
   role: string;
   market: string;
+  status: string;
+  /** How many of all users (unfiltered) have activated their account. */
+  activated: number;
   shown: number;
   total: number;
 }) {
@@ -28,15 +33,19 @@ export function UserFilters({
   // back/forward navigation resets them.
   const [roleValue, setRoleValue] = useState(role);
   const [marketValue, setMarketValue] = useState(market);
+  const [statusValue, setStatusValue] = useState(status);
 
-  function update(next: { role?: string; market?: string }) {
+  function update(next: { role?: string; market?: string; status?: string }) {
     const params = new URLSearchParams();
     const r = next.role ?? roleValue;
     const m = next.market ?? marketValue;
+    const s = next.status ?? statusValue;
     setRoleValue(r);
     setMarketValue(m);
+    setStatusValue(s);
     if (r) params.set("role", r);
     if (m) params.set("market", m);
+    if (s) params.set("status", s);
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }
@@ -68,10 +77,20 @@ export function UserFilters({
         ))}
         <option value={OTHER_MARKET}>Other / not set</option>
       </select>
-      {(roleValue || marketValue) && (
+      <select
+        aria-label="Filter by account status"
+        value={statusValue}
+        onChange={(e) => update({ status: e.target.value })}
+        className={selectClass}
+      >
+        <option value="">All accounts</option>
+        <option value="activated">Activated</option>
+        <option value="not-activated">Not activated</option>
+      </select>
+      {(roleValue || marketValue || statusValue) && (
         <button
           type="button"
-          onClick={() => update({ role: "", market: "" })}
+          onClick={() => update({ role: "", market: "", status: "" })}
           className="text-sm text-zinc-500 underline hover:text-zinc-950"
         >
           Clear
@@ -79,6 +98,8 @@ export function UserFilters({
       )}
       <span className="text-sm text-zinc-500">
         {shown === total ? `${total} users` : `${shown} of ${total} users`}
+        {" · "}
+        {activated} of {total} activated
       </span>
     </div>
   );

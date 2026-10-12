@@ -12,6 +12,7 @@ import { AllStarToggle, HomeMarketCell, InviteLinkButton } from "./user-cells";
 import { OTHER_MARKET, UserFilters } from "./user-filters";
 
 const ROLES = ["admin", "producer", "comic"];
+const STATUSES = ["activated", "not-activated"];
 
 type UserRow = {
   id: number;
@@ -30,9 +31,11 @@ export default async function AdminUsersPage({
 }: PageProps<"/admin/users">) {
   await requireAdmin();
 
-  // ?role= and ?market= filter the table. Unknown values are ignored.
+  // ?role=, ?market= and ?status= filter the table. Unknown values are ignored.
   const params = await searchParams;
   const roleParam = typeof params.role === "string" ? params.role : "";
+  const statusParam = typeof params.status === "string" ? params.status : "";
+  const status = STATUSES.includes(statusParam) ? statusParam : "";
   const marketParam = typeof params.market === "string" ? params.market : "";
   const role = ROLES.includes(roleParam) ? roleParam : "";
   const market =
@@ -50,12 +53,15 @@ export default async function AdminUsersPage({
   // ("Austin") still count as their listed city ("Austin, TX").
   const filtered = allUsers.filter((u) => {
     if (role && u.role !== role) return false;
+    if (status && u.activated !== (status === "activated")) return false;
     if (market) {
       const userMarket = u.home_market ? matchHomeMarket(u.home_market) : null;
       return market === OTHER_MARKET ? userMarket === null : userMarket === market;
     }
     return true;
   });
+
+  const activatedCount = allUsers.filter((u) => u.activated).length;
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-10">
@@ -91,9 +97,11 @@ export default async function AdminUsersPage({
       <AddUserForm />
 
       <UserFilters
-        key={`${role}|${market}`}
+        key={`${role}|${market}|${status}`}
         role={role}
         market={market}
+        status={status}
+        activated={activatedCount}
         shown={filtered.length}
         total={allUsers.length}
       />
@@ -105,6 +113,7 @@ export default async function AdminUsersPage({
               <th className="py-2 pr-4">Name</th>
               <th className="py-2 pr-4">Email</th>
               <th className="py-2 pr-4">Role</th>
+              <th className="py-2 pr-4">Account</th>
               <th className="py-2 pr-4">Home market</th>
               <th className="py-2 pr-4">All-star</th>
               <th className="py-2 pr-4">Truck</th>
@@ -118,6 +127,13 @@ export default async function AdminUsersPage({
                 <td className="py-2 pr-4 font-medium text-zinc-950">{u.name}</td>
                 <td className="break-all py-2 pr-4 text-zinc-600">{u.email ?? "—"}</td>
                 <td className="py-2 pr-4 capitalize text-zinc-600">{u.role}</td>
+                <td className="whitespace-nowrap py-2 pr-4">
+                  {u.activated ? (
+                    <span className="text-xs font-medium text-emerald-700">Activated</span>
+                  ) : (
+                    <span className="text-xs font-medium text-amber-700">Not activated</span>
+                  )}
+                </td>
                 <td className="py-2 pr-4">
                   <HomeMarketCell
                     // Remount after a save so defaultValue tracks the server.
@@ -133,11 +149,6 @@ export default async function AdminUsersPage({
                   {u.has_truck === null ? "—" : u.has_truck ? "Yes" : "No"}
                 </td>
                 <td className="py-2 pr-4">
-                  {!u.activated && (
-                    <span className="mb-1 block text-xs font-medium text-amber-700">
-                      Not activated
-                    </span>
-                  )}
                   {u.access_token ? (
                     <LinkCell userId={u.id} name={u.name} link={buildLink(u.access_token)} />
                   ) : !u.activated && u.role !== "admin" ? (
@@ -159,7 +170,7 @@ export default async function AdminUsersPage({
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={8} className="py-4 text-center text-zinc-500">
+                <td colSpan={9} className="py-4 text-center text-zinc-500">
                   {allUsers.length === 0 ? "No users yet." : "No users match these filters."}
                 </td>
               </tr>
