@@ -20,9 +20,10 @@ export default async function BulkLinksPage() {
       <div className="mt-3 text-sm text-zinc-600">
         <p>
           Paste comic names (separated by commas or new lines) or upload a
-          CSV. Each one gets a private link that signs them straight in, no
-          email or password needed. Then copy a ready-to-send invite for each
-          person.
+          CSV. Each one gets a private link. The first time they open it,
+          they sign up with their email and a password; after that they log
+          in with those and the link stops working. Then copy a ready-to-send
+          invite for each person.
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>CSV columns: name (required), home_market, all_star.</li>

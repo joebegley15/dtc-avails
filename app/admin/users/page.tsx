@@ -40,8 +40,8 @@ export default async function AdminUsersPage({
 
   const allUsers = (await sql`
     select id, name, email, role, home_market, is_all_star, has_truck, access_token,
-      -- Has chosen their own password, or is a link-only user (no password).
-      not (must_change_password or (password_hash is null and access_token is null)) as activated
+      -- Has chosen their own password.
+      not (must_change_password or password_hash is null) as activated
     from users
     order by role, name
   `) as UserRow[];

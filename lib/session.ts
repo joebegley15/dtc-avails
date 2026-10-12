@@ -12,7 +12,13 @@ export type CurrentUser = {
   name: string;
   role: Role;
   is_all_star: boolean;
+  /**
+   * Must finish setting up their account before using the app: set by an
+   * admin, or implied by having no password (a link-only comic).
+   */
   must_change_password: boolean;
+  has_password: boolean;
+  has_email: boolean;
 };
 
 function getAuthSecret(): string {
@@ -77,7 +83,10 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   if (userId === null) return null;
 
   const rows = (await sql`
-    select id, name, role, is_all_star, must_change_password
+    select id, name, role, is_all_star,
+      (must_change_password or password_hash is null) as must_change_password,
+      password_hash is not null as has_password,
+      email is not null as has_email
     from users where id = ${userId}
   `) as CurrentUser[];
 

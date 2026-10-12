@@ -6,7 +6,7 @@ export const INVITE_MESSAGE_STORAGE_KEY = "dtc-avails:invite-message";
 
 export const DEFAULT_INVITE_MESSAGE = `Hey {first_name}! You're invited to Texahoma Avails, where you let us know which dates you're available to perform.
 
-Here's your personal link. It signs you straight in, so please don't share it:
+Here's your personal link to sign up. It only works once, so please don't share it:
 {link}`;
 
 /** Fills {name}, {first_name} and {link} in the template. */

@@ -166,9 +166,9 @@ export async function regenerateAccessToken(
   const updated = (await sql`
     update users
     set access_token = ${token}, token_created_at = now(),
-      -- Link-only users (no password) never change one. A not-yet-activated
-      -- user with a password keeps the flag, so the new link still makes
-      -- them choose one.
+      -- Users with no password are sent to set one up regardless of the
+      -- flag (see getCurrentUser). A not-yet-activated user with a password
+      -- keeps the flag, so the new link still makes them choose one.
       must_change_password = must_change_password and password_hash is not null
     where id = ${userId} and access_token is not null
     returning id
@@ -272,9 +272,9 @@ export type InviteLinkResult = { ok: boolean; link?: string; error?: string };
 /**
  * Gives a not-yet-activated user (never set their own password) a sign-in
  * link, or returns the one they already have. Opening it signs them in, and
- * because must_change_password is set for anyone with an email, they land on
- * /change-password. Setting a password there clears the token, so the link
- * is one-time. Users without an email are link-only comics: their link stays.
+ * because they haven't chosen a password yet, they land on /change-password
+ * (link-only comics also add their email there). Setting a password clears
+ * the token, so the link is one-time.
  */
 export async function getInviteLink(userId: number): Promise<InviteLinkResult> {
   await requireAdmin();
