@@ -66,9 +66,9 @@ export default async function AvailsPage() {
               : "Home market: not set, ask Joe to add it"}
           </p>
           <p className="mt-3 rounded-md bg-zinc-100 px-3 py-2 text-sm text-zinc-700">
-            Only submit to shows you can actually make. And please note,
-            submitting avails just helps us comb through a huge list of
-            comedians. Submitting doesn&apos;t guarantee you&apos;ll be booked.
+            An important note: Only submit for dates you think you can make.
+            And remember, submitting helps us sort through a big list of comics,
+            but it isn&rsquo;t a guaranteed booking.
           </p>
         </div>
       </header>
