@@ -65,14 +65,27 @@ export function AvailsForm({
   const [hasTruck, setHasTruck] = useState<boolean | null>(initialHasTruck);
   const [lastSubmitted, setLastSubmitted] = useState(lastSubmittedAt);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
+  // How many shows the last save recorded an in/out answer for.
+  const [savedCount, setSavedCount] = useState(0);
   const [serverError, setServerError] = useState<string | null>(null);
   const [triedToSubmit, setTriedToSubmit] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  // A city ("Austin, TX"), or "" for every city.
+  const [cityFilter, setCityFilter] = useState("");
   const [saving, startSaving] = useTransition();
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Display order, which is also the order "first unanswered" is judged in.
   const ordered = useMemo(() => byDate(shows), [shows]);
+  // Cities arrive already formatted as "City, ST", so equal strings are the
+  // same city.
+  const cities = useMemo(
+    () => [...new Set(shows.map((s) => s.city))].sort((a, b) => a.localeCompare(b)),
+    [shows]
+  );
+  // The filter only hides rows: answers and the submit still cover every show.
+  const listed = cityFilter
+    ? ordered.filter((s) => s.city === cityFilter)
+    : ordered;
 
   const open = ordered.filter((s) => !s.locked);
   const answeredCount = open.filter((s) => answers[s.id] !== undefined).length;
@@ -134,6 +147,7 @@ export function AvailsForm({
       if (result.ok) {
         const now = new Date();
         setSavedAt(now);
+        setSavedCount(result.saved);
         setLastSubmitted(now.toISOString());
         setTriedToSubmit(false);
       } else {
@@ -176,8 +190,24 @@ export function AvailsForm({
           </div>
         </div>
 
+        <label className="mb-2 flex items-center justify-end gap-2 text-sm text-zinc-600">
+          City
+          <select
+            value={cityFilter}
+            onChange={(e) => setCityFilter(e.target.value)}
+            className="h-9 rounded-md border border-zinc-300 bg-white px-2 text-sm text-zinc-950"
+          >
+            <option value="">All</option>
+            {cities.map((city) => (
+              <option key={city} value={city}>
+                {city}
+              </option>
+            ))}
+          </select>
+        </label>
+
         <ul className="flex flex-col gap-2">
-          {ordered.map((show) => (
+          {listed.map((show) => (
             <ShowRow
               key={show.id}
               show={show}
@@ -201,7 +231,10 @@ export function AvailsForm({
             {error && <p className="text-red-600">{error}</p>}
             {!error && savedAt && (
               <p className="text-emerald-700">
-                Avails saved · Saved at {formatTime(savedAt)}
+                {savedCount === 0
+                  ? "Saved. No shows marked in or out"
+                  : `${savedCount} show avail${savedCount === 1 ? "" : "s"} submitted`}{" "}
+                · Saved at {formatTime(savedAt)}
               </p>
             )}
           </div>

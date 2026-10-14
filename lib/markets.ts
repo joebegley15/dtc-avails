@@ -36,9 +36,54 @@ export const HOME_MARKETS = [
 const BY_CITY = new Map(HOME_MARKETS.map((m) => [cityPart(m), m]));
 
 /**
+ * Show cities that aren't home markets, so formatCity can supply their state.
+ * Add to this when a new city gets shows.
+ */
+const OTHER_SHOW_CITIES = [
+  "Belton, TX",
+  "Conroe, TX",
+  "Katy, TX",
+  "Richardson, TX",
+  "Round Rock, TX",
+  "San Marcos, TX",
+  "Sugar Land, TX",
+  "Waco, TX",
+];
+const OTHER_BY_CITY = new Map(OTHER_SHOW_CITIES.map((c) => [cityPart(c), c]));
+
+/**
  * The canonical list entry for free-typed input ("austin", "Austin, TX",
  * " Austin,tx "), or null if it isn't one of the listed cities.
  */
 export function matchHomeMarket(input: string): string | null {
   return BY_CITY.get(cityPart(input)) ?? null;
+}
+
+function titleCase(text: string): string {
+  return text
+    .toLowerCase()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+/**
+ * A show city in "City, ST" form: "austin" and " austin,tx " both become
+ * "Austin, TX". A city with no state that isn't in either list takes the
+ * state from `known` (other spellings of the same city), else stays city-only.
+ */
+export function formatCity(raw: string, known: readonly string[] = []): string {
+  const listed = matchHomeMarket(raw) ?? OTHER_BY_CITY.get(cityPart(raw));
+  if (listed) return listed;
+
+  const [cityRaw = "", stateRaw = ""] = raw.split(",").map((part) => part.trim());
+  const city = titleCase(cityRaw);
+  const state =
+    stateRaw.toUpperCase() ||
+    known
+      .find((k) => k.includes(",") && cityPart(k) === cityPart(raw))
+      ?.split(",")[1]
+      ?.trim()
+      .toUpperCase();
+  return state ? `${city}, ${state}` : city;
 }

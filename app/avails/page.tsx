@@ -5,6 +5,7 @@ import {
   loadAvailsProfile,
   loadVisibleShows,
 } from "@/lib/avails";
+import { formatCity } from "@/lib/markets";
 import { AvailsForm, type AvailsShow } from "./avails-form";
 
 export default async function AvailsPage() {
@@ -15,9 +16,10 @@ export default async function AvailsPage() {
     loadAvailsProfile(user),
   ]);
 
+  const rawCities = visible.map((s) => s.city);
   const shows: AvailsShow[] = visible.map((s) => ({
     id: s.id,
-    city: s.city,
+    city: formatCity(s.city, rawCities),
     neighborhood: s.neighborhood,
     date: s.show_date,
     time: s.show_time,
@@ -62,6 +64,11 @@ export default async function AvailsPage() {
             {profile.homeMarket
               ? `Home market: ${profile.homeMarket}`
               : "Home market: not set, ask Joe to add it"}
+          </p>
+          <p className="mt-3 rounded-md bg-zinc-100 px-3 py-2 text-sm text-zinc-700">
+            Only submit to shows you can actually make. And please note,
+            submitting avails just helps us comb through a huge list of
+            comedians. Submitting doesn&apos;t guarantee you&apos;ll be booked.
           </p>
         </div>
       </header>

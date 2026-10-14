@@ -1,6 +1,8 @@
 // Pure parsing and validation for show data. Shared by bulk upload, add show,
 // and edit show. No database access here, so it is safe to import anywhere.
 
+import { formatCity } from "./markets";
+
 export type ProducerOption = { id: number; name: string };
 
 export type ShowInput = {
@@ -354,7 +356,7 @@ export function validateShowInput(
 ): ShowValidation {
   const errors: string[] = [];
 
-  const city = input.city.trim();
+  const city = formatCity(input.city.trim());
   const neighborhood = input.neighborhood.trim();
   const venue = input.venue.trim();
   const dateRaw = input.date.trim();
