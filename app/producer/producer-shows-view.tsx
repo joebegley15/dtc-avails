@@ -30,6 +30,7 @@ export type ComicAnswer = {
   isAllStar: boolean;
   isTravel: boolean;
   downToHelp: boolean;
+  inTown: boolean;
   hasTruck: boolean;
 };
 
@@ -84,6 +85,11 @@ function ComicLine({ comic: c, muted = false }: { comic: ComicAnswer; muted?: bo
       {!muted && c.isTravel && (
         <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800">
           Travel
+        </span>
+      )}
+      {!muted && c.inTown && (
+        <span className="rounded bg-violet-100 px-1.5 py-0.5 text-xs font-medium text-violet-800">
+          In town
         </span>
       )}
       {c.downToHelp && (

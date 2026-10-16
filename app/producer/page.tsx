@@ -31,6 +31,7 @@ type AnsweredComicRow = {
   show_id: number;
   available: boolean;
   down_to_help: boolean;
+  in_town: boolean;
   id: number;
   name: string;
   email: string | null;
@@ -121,7 +122,7 @@ export default async function ProducerPage({
         group by a.show_id
       `,
       sql`
-        select a.show_id, a.available, a.down_to_help,
+        select a.show_id, a.available, a.down_to_help, a.in_town,
           u.id, u.name, u.email, u.home_market, u.is_all_star, u.has_truck
         from avails a
         join shows s on s.id = a.show_id
@@ -157,14 +158,16 @@ export default async function ProducerPage({
       isTravel: c.home_market ? cityPart(c.home_market) !== cityPart(s.city) : false,
       available: c.available,
       downToHelp: c.down_to_help,
+      inTown: c.available && c.in_town,
       hasTruck: c.has_truck === true,
     }));
 
+    // A traveling comic who'll already be in town sorts with the locals.
     const availableComics = answered
       .filter((c) => c.available)
       .sort((a, b) => {
-        const tier = (c: { isAllStar: boolean; isTravel: boolean }) =>
-          c.isAllStar ? 0 : c.isTravel ? 2 : 1;
+        const tier = (c: { isAllStar: boolean; isTravel: boolean; inTown: boolean }) =>
+          c.isAllStar ? 0 : c.isTravel && !c.inTown ? 2 : 1;
         return tier(a) - tier(b) || a.name.localeCompare(b.name);
       });
     // Already in name order from the query.

@@ -15,6 +15,7 @@
     "migrate:access-tokens": "node scripts/migrate-access-tokens.mjs",
     "migrate:drop-username": "node scripts/migrate-drop-username.mjs",
     "migrate:help-truck": "node scripts/migrate-help-truck.mjs",
+    "migrate:in-town": "node scripts/migrate-in-town.mjs",
     "migrate:show-cities": "npx --yes tsx scripts/migrate-show-cities.ts"
   },
   "dependencies": {

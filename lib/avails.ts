@@ -20,6 +20,8 @@ export type VisibleShow = {
   available: boolean | null;
   /** Offered to help at this show. False when unanswered. */
   down_to_help: boolean;
+  /** Will already be in the area for this show. Only set with an "in" answer. */
+  in_town: boolean;
 };
 
 /**
@@ -43,7 +45,8 @@ export async function loadVisibleShows(user: CurrentUser): Promise<VisibleShow[]
       s.is_all_star,
       (s.is_all_star and not ${user.is_all_star}::boolean) as locked,
       a.available,
-      coalesce(a.down_to_help, false) as down_to_help
+      coalesce(a.down_to_help, false) as down_to_help,
+      coalesce(a.in_town, false) as in_town
     from shows s
     left join avails a on a.show_id = s.id and a.user_id = ${user.id}
       and (${user.is_all_star}::boolean or not s.is_all_star)

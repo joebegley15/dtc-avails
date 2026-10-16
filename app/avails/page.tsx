@@ -32,9 +32,11 @@ export default async function AvailsPage() {
 
   const initialAnswers: Record<number, boolean> = {};
   const initialHelp: Record<number, boolean> = {};
+  const initialInTown: Record<number, boolean> = {};
   for (const s of visible) {
     if (s.available !== null) initialAnswers[s.id] = s.available;
     if (s.down_to_help) initialHelp[s.id] = true;
+    if (s.in_town) initialInTown[s.id] = true;
   }
 
   return (
@@ -69,6 +71,14 @@ export default async function AvailsPage() {
             An important note: Only submit for dates you think you can make.
             And remember, submitting helps us sort through a big list of comics,
             but it isn&rsquo;t a guaranteed booking.
+            <br />
+            <br />
+            And one more note: A lot of these are local spots that do not cover
+            travel. Please keep that in mind when submitting.
+            <br/>
+            <br/>
+            "In town"&rdquo; lets us know you&rsquo;ll already be in the
+            area, which helps us work out booking. You do NOT need to select "In town" for shows in and around your home market
           </p>
         </div>
       </header>
@@ -77,6 +87,7 @@ export default async function AvailsPage() {
         shows={shows}
         initialAnswers={initialAnswers}
         initialHelp={initialHelp}
+        initialInTown={initialInTown}
         initialHasTruck={profile.hasTruck}
         lastSubmittedAt={profile.lastSubmittedAt}
       />

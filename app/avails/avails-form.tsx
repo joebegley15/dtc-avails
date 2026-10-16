@@ -51,17 +51,20 @@ export function AvailsForm({
   shows,
   initialAnswers,
   initialHelp,
+  initialInTown,
   initialHasTruck,
   lastSubmittedAt,
 }: {
   shows: AvailsShow[];
   initialAnswers: Record<number, boolean>;
   initialHelp: Record<number, boolean>;
+  initialInTown: Record<number, boolean>;
   initialHasTruck: boolean | null;
   lastSubmittedAt: string | null;
 }) {
   const [answers, setAnswers] = useState<Record<number, boolean>>(initialAnswers);
   const [help, setHelp] = useState<Record<number, boolean>>(initialHelp);
+  const [inTown, setInTown] = useState<Record<number, boolean>>(initialInTown);
   const [hasTruck, setHasTruck] = useState<boolean | null>(initialHasTruck);
   const [lastSubmitted, setLastSubmitted] = useState(lastSubmittedAt);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
@@ -110,6 +113,12 @@ export function AvailsForm({
     setServerError(null);
   }
 
+  function toggleInTown(showId: number) {
+    setInTown((prev) => ({ ...prev, [showId]: !prev[showId] }));
+    setSavedAt(null);
+    setServerError(null);
+  }
+
   function answerTruck(value: boolean) {
     setHasTruck(value);
     setSavedAt(null);
@@ -141,6 +150,7 @@ export function AvailsForm({
           showId: s.id,
           available: answers[s.id] ?? null,
           downToHelp: answers[s.id] !== undefined && help[s.id] === true,
+          inTown: answers[s.id] === true && inTown[s.id] === true,
         })),
         hasTruck
       );
@@ -213,9 +223,11 @@ export function AvailsForm({
               show={show}
               answer={answers[show.id]}
               downToHelp={help[show.id] === true}
+              inTown={inTown[show.id] === true}
               highlighted={highlightId === `show-${show.id}`}
               onAnswer={(available) => answer(show.id, available)}
               onToggleHelp={() => toggleHelp(show.id)}
+              onToggleInTown={() => toggleInTown(show.id)}
             />
           ))}
         </ul>
@@ -256,16 +268,20 @@ function ShowRow({
   show,
   answer,
   downToHelp,
+  inTown,
   highlighted,
   onAnswer,
   onToggleHelp,
+  onToggleInTown,
 }: {
   show: AvailsShow;
   answer: boolean | undefined;
   downToHelp: boolean;
+  inTown: boolean;
   highlighted: boolean;
   onAnswer: (available: boolean) => void;
   onToggleHelp: () => void;
+  onToggleInTown: () => void;
 }) {
   if (show.locked) return <LockedShowRow show={show} />;
 
@@ -310,21 +326,39 @@ function ShowRow({
         </div>
       </div>
 
-      {/* Only saved with an in/out answer, so it waits for one. */}
-      <label
-        className={`mt-2 flex w-fit items-center gap-2 text-sm ${
-          answer === undefined ? "text-zinc-400" : "cursor-pointer text-zinc-700"
-        }`}
-      >
-        <input
-          type="checkbox"
-          checked={downToHelp && answer !== undefined}
-          disabled={answer === undefined}
-          onChange={onToggleHelp}
-          className="size-4 accent-[#DA1717]"
-        />
-        Down to help
-      </label>
+      <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1">
+        {/* Only saved with an in/out answer, so it waits for one. */}
+        <label
+          className={`flex w-fit items-center gap-2 text-sm ${
+            answer === undefined ? "text-zinc-400" : "cursor-pointer text-zinc-700"
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={downToHelp && answer !== undefined}
+            disabled={answer === undefined}
+            onChange={onToggleHelp}
+            className="size-4 accent-[#DA1717]"
+          />
+          Down to help
+        </label>
+
+        {/* Only saved with an "in" answer, so it waits for one. */}
+        <label
+          className={`flex w-fit items-center gap-2 text-sm ${
+            answer === true ? "cursor-pointer text-zinc-700" : "text-zinc-400"
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={inTown && answer === true}
+            disabled={answer !== true}
+            onChange={onToggleInTown}
+            className="size-4 accent-[#DA1717]"
+          />
+          In town
+        </label>
+      </div>
     </li>
   );
 }

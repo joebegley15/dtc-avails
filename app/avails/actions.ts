@@ -9,6 +9,8 @@ export type AvailsAnswer = {
   showId: number;
   available: boolean | null;
   downToHelp: boolean;
+  /** Only saved with an "in" answer. */
+  inTown: boolean;
 };
 
 export type SubmitAvailsResult = { ok: boolean; saved: number; error?: string };
@@ -29,7 +31,7 @@ export async function submitAvails(
   // trust which shows it names. Visibility is re-derived from the database.
   const requested = new Map<
     number,
-    { available: boolean | null; downToHelp: boolean }
+    { available: boolean | null; downToHelp: boolean; inTown: boolean }
   >();
   if (Array.isArray(answers)) {
     for (const answer of answers.slice(0, MAX_ANSWERS)) {
@@ -41,6 +43,7 @@ export async function submitAvails(
         requested.set(answer.showId, {
           available: answer.available,
           downToHelp: answer.downToHelp === true,
+          inTown: answer.available === true && answer.inTown === true,
         });
       }
     }
@@ -50,8 +53,8 @@ export async function submitAvails(
     (await loadVisibleShows(user)).flatMap((s) => (s.locked ? [] : [s.id]))
   );
   const allowed = [...requested].filter(([showId]) => visibleIds.has(showId));
-  const answered = allowed.flatMap(([showId, { available, downToHelp }]) =>
-    available === null ? [] : [{ showId, available, downToHelp }]
+  const answered = allowed.flatMap(([showId, { available, downToHelp, inTown }]) =>
+    available === null ? [] : [{ showId, available, downToHelp, inTown }]
   );
   const cleared = allowed.flatMap(([showId, { available }]) =>
     available === null ? [showId] : []
@@ -64,13 +67,14 @@ export async function submitAvails(
       where user_id = ${user.id} and show_id = any(${cleared}::integer[])
     `,
     ...answered.map(
-      ({ showId, available, downToHelp }) => sql`
-        insert into avails (user_id, show_id, available, down_to_help, submitted_at)
-        values (${user.id}, ${showId}, ${available}, ${downToHelp}, now())
+      ({ showId, available, downToHelp, inTown }) => sql`
+        insert into avails (user_id, show_id, available, down_to_help, in_town, submitted_at)
+        values (${user.id}, ${showId}, ${available}, ${downToHelp}, ${inTown}, now())
         on conflict (user_id, show_id)
         do update set
           available = excluded.available,
           down_to_help = excluded.down_to_help,
+          in_town = excluded.in_town,
           submitted_at = now()
       `
     ),
