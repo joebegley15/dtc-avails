@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
-import { COUNTED_AVAIL } from "@/lib/avails";
+import { COUNTED_AVAIL, offersInTown } from "@/lib/avails";
 import {
   ProducerShowsView,
   type ProducerOption,
@@ -158,7 +158,8 @@ export default async function ProducerPage({
       isTravel: c.home_market ? cityPart(c.home_market) !== cityPart(s.city) : false,
       available: c.available,
       downToHelp: c.down_to_help,
-      inTown: c.available && c.in_town,
+      // Ignore answers saved before the 50-mile rule for shows close to home.
+      inTown: c.available && c.in_town && offersInTown(s.city, c.home_market),
       hasTruck: c.has_truck === true,
     }));
 

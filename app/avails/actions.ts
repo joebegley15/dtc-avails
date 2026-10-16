@@ -2,7 +2,7 @@
 
 import { sql } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
-import { loadVisibleShows } from "@/lib/avails";
+import { loadAvailsProfile, loadVisibleShows, offersInTown } from "@/lib/avails";
 
 /** available null means the show was left blank: any saved answer is removed. */
 export type AvailsAnswer = {
@@ -49,12 +49,20 @@ export async function submitAvails(
     }
   }
 
-  const visibleIds = new Set(
-    (await loadVisibleShows(user)).flatMap((s) => (s.locked ? [] : [s.id]))
+  const [visible, profile] = await Promise.all([
+    loadVisibleShows(user),
+    loadAvailsProfile(user),
+  ]);
+  const visibleIds = new Set(visible.flatMap((s) => (s.locked ? [] : [s.id])));
+  // "In town" is only kept for shows more than 50 miles from home.
+  const inTownIds = new Set(
+    visible.flatMap((s) => (offersInTown(s.city, profile.homeMarket) ? [s.id] : []))
   );
   const allowed = [...requested].filter(([showId]) => visibleIds.has(showId));
   const answered = allowed.flatMap(([showId, { available, downToHelp, inTown }]) =>
-    available === null ? [] : [{ showId, available, downToHelp, inTown }]
+    available === null
+      ? []
+      : [{ showId, available, downToHelp, inTown: inTown && inTownIds.has(showId) }]
   );
   const cleared = allowed.flatMap(([showId, { available }]) =>
     available === null ? [showId] : []

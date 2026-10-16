@@ -3,6 +3,7 @@ import { AppHeader, hasTabs } from "@/components/app-header";
 import {
   isTravelShow,
   loadAvailsProfile,
+  offersInTown,
   loadVisibleShows,
 } from "@/lib/avails";
 import { formatCity } from "@/lib/markets";
@@ -26,6 +27,7 @@ export default async function AvailsPage() {
     isAllStar: s.is_all_star,
     locked: s.locked,
     isTravel: isTravelShow(s.city, profile.homeMarket),
+    offersInTown: offersInTown(s.city, profile.homeMarket),
   }));
 
   const tabbed = hasTabs(user);
@@ -36,7 +38,7 @@ export default async function AvailsPage() {
   for (const s of visible) {
     if (s.available !== null) initialAnswers[s.id] = s.available;
     if (s.down_to_help) initialHelp[s.id] = true;
-    if (s.in_town) initialInTown[s.id] = true;
+    if (s.in_town && offersInTown(s.city, profile.homeMarket)) initialInTown[s.id] = true;
   }
 
   return (
@@ -77,8 +79,8 @@ export default async function AvailsPage() {
             travel. Please keep that in mind when submitting.
             <br/>
             <br/>
-            "In town"&rdquo; lets us know you&rsquo;ll already be in the
-            area, which helps us work out booking. You do NOT need to select "In town" for shows in and around your home market
+            &ldquo;In town&rdquo; lets us know you&rsquo;ll already be in the
+            area, which helps us work out booking. You do NOT need to select &ldquo;In town&rdquo; for shows in and around your home market
           </p>
         </div>
       </header>

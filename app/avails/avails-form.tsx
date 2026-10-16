@@ -14,6 +14,8 @@ export type AvailsShow = {
   /** All-star show and this user isn't an all-star: shown greyed out. */
   locked: boolean;
   isTravel: boolean;
+  /** More than 50 miles from home (or unknown): the "In town" box is shown. */
+  offersInTown: boolean;
 };
 
 const noopSubscribe = () => () => {};
@@ -150,7 +152,7 @@ export function AvailsForm({
           showId: s.id,
           available: answers[s.id] ?? null,
           downToHelp: answers[s.id] !== undefined && help[s.id] === true,
-          inTown: answers[s.id] === true && inTown[s.id] === true,
+          inTown: s.offersInTown && answers[s.id] === true && inTown[s.id] === true,
         })),
         hasTruck
       );
@@ -344,20 +346,22 @@ function ShowRow({
         </label>
 
         {/* Only saved with an "in" answer, so it waits for one. */}
-        <label
-          className={`flex w-fit items-center gap-2 text-sm ${
-            answer === true ? "cursor-pointer text-zinc-700" : "text-zinc-400"
-          }`}
-        >
-          <input
-            type="checkbox"
-            checked={inTown && answer === true}
-            disabled={answer !== true}
-            onChange={onToggleInTown}
-            className="size-4 accent-[#DA1717]"
-          />
-          In town
-        </label>
+        {show.offersInTown && (
+          <label
+            className={`flex w-fit items-center gap-2 text-sm ${
+              answer === true ? "cursor-pointer text-zinc-700" : "text-zinc-400"
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={inTown && answer === true}
+              disabled={answer !== true}
+              onChange={onToggleInTown}
+              className="size-4 accent-[#DA1717]"
+            />
+            In town
+          </label>
+        )}
       </div>
     </li>
   );

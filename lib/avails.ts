@@ -1,6 +1,6 @@
 // Server-side data access for the /avails flow. Import from server code only.
 import { sql } from "./db";
-import { cityPart } from "./location";
+import { cityPart, milesBetween } from "./location";
 import type { CurrentUser } from "./session";
 
 // "Today" for show_date >= today. Shows are mostly in Texas, and using the
@@ -98,4 +98,19 @@ export const COUNTED_AVAIL = "(not s.is_all_star or u.is_all_star)";
 export function isTravelShow(showCity: string, homeMarket: string | null): boolean {
   if (!homeMarket) return false;
   return cityPart(showCity) !== cityPart(homeMarket);
+}
+
+/** Shows this close to home are local: "In town" isn't offered for them. */
+const IN_TOWN_MIN_MILES = 50;
+
+/**
+ * Whether "In town" is offered for a show: only when it's more than 50 miles
+ * from the user's home market. With no home market it's always offered; for a
+ * city with no known coordinates, it's offered unless it's the home city.
+ */
+export function offersInTown(showCity: string, homeMarket: string | null): boolean {
+  if (!homeMarket) return true;
+  const miles = milesBetween(showCity, homeMarket);
+  if (miles === null) return cityPart(showCity) !== cityPart(homeMarket);
+  return miles > IN_TOWN_MIN_MILES;
 }
