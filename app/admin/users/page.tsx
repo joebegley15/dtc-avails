@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { buildLink } from "@/lib/tokens";
 import { AddUserForm } from "./add-user-form";
 import { DeleteUserButton } from "./delete-user-button";
+import { EditUserButton } from "./edit-user-button";
 import { LinkCell } from "./link-cell";
 import { ResetPasswordButton } from "./reset-password-button";
 import { ResetToDefaultButton } from "./reset-to-default-button";
@@ -171,6 +172,15 @@ export default async function AdminUsersPage({
                 </td>
                 <td className="py-2">
                   <div className="flex flex-col gap-1">
+                    <EditUserButton
+                      user={{
+                        id: u.id,
+                        name: u.name,
+                        email: u.email,
+                        role: u.role,
+                        has_truck: u.has_truck,
+                      }}
+                    />
                     <ResetPasswordButton userId={u.id} />
                     {u.role !== "admin" && <ResetToDefaultButton userId={u.id} />}
                     {u.role !== "admin" && (

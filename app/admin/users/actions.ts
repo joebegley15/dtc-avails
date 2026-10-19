@@ -313,3 +313,77 @@ export async function getInviteLink(userId: number): Promise<InviteLinkResult> {
   revalidatePath("/admin/users");
   return { ok: true, link: buildLink(rows[0].access_token) };
 }
+
+export type EditUserInput = {
+  name: string;
+  email: string;
+  /** Ignored for admins: an admin's role isn't changed here. */
+  role: string;
+  /** null clears the answer. */
+  hasTruck: boolean | null;
+};
+
+const EDIT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EDITABLE_ROLES: Role[] = ["producer", "comic"];
+
+/**
+ * Edits a user's name, email, role and truck answer. Admin rows keep their
+ * role, and nobody is made an admin here (admins are added one at a time,
+ * never with the default password). An email can only be left blank if the
+ * user didn't have one, since email is how people sign in.
+ */
+export async function updateUser(
+  userId: number,
+  input: EditUserInput
+): Promise<UpdateUserResult> {
+  await requireAdmin();
+
+  if (!validUserId(userId) || !input || typeof input !== "object") {
+    return { ok: false, error: "Invalid request." };
+  }
+  const name = typeof input.name === "string" ? input.name.trim().replace(/\s+/g, " ") : "";
+  const email = typeof input.email === "string" ? input.email.trim().toLowerCase() : "";
+  const hasTruck = typeof input.hasTruck === "boolean" ? input.hasTruck : null;
+
+  if (!name) return { ok: false, error: "Name is required." };
+  if (name.length > 100) return { ok: false, error: "Keep the name under 100 characters." };
+  if (email && !EDIT_EMAIL_RE.test(email)) {
+    return { ok: false, error: "Enter a valid email." };
+  }
+
+  const [current] = (await sql`
+    select role, email from users where id = ${userId}
+  `) as { role: Role; email: string | null }[];
+  if (!current) return { ok: false, error: "User not found." };
+
+  if (!email && current.email) {
+    return { ok: false, error: "Email can't be removed: it's how they sign in." };
+  }
+
+  let role = current.role;
+  if (current.role !== "admin") {
+    if (!EDITABLE_ROLES.includes(input.role as Role)) {
+      return { ok: false, error: "Invalid role." };
+    }
+    role = input.role as Role;
+  }
+
+  try {
+    await sql`
+      update users set
+        name = ${name},
+        email = ${email || null},
+        role = ${role},
+        has_truck = ${hasTruck}
+      where id = ${userId}
+    `;
+  } catch (err) {
+    if (err instanceof Error && "code" in err && err.code === "23505") {
+      return { ok: false, error: "That email is already in use." };
+    }
+    throw err;
+  }
+
+  revalidatePath("/admin/users");
+  return { ok: true };
+}
