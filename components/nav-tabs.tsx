@@ -8,12 +8,20 @@ export type NavTab = { href: string; label: string };
 export function NavTabs({ tabs }: { tabs: NavTab[] }) {
   const pathname = usePathname();
 
+  // Match on the path alone: a tab's href may carry a query string. When
+  // tabs nest (/producer and /producer/nominate), the longest match wins.
+  const pathOf = (href: string) => href.split("?")[0];
+  const activeHref = tabs
+    .filter(({ href }) => {
+      const path = pathOf(href);
+      return pathname === path || pathname.startsWith(`${path}/`);
+    })
+    .sort((a, b) => pathOf(b.href).length - pathOf(a.href).length)[0]?.href;
+
   return (
     <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
       {tabs.map(({ href, label }) => {
-        // Match on the path alone: a tab's href may carry a query string.
-        const path = href.split("?")[0];
-        const active = pathname === path || pathname.startsWith(`${path}/`);
+        const active = href === activeHref;
         return (
           <Link
             key={href}

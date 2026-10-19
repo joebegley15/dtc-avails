@@ -189,6 +189,8 @@ export type DeleteUserResult = { ok: boolean; message: string };
  * assignments go with them (on delete cascade). The two references without a
  * cascade are cleared first: the legacy shows.producer_id column, and
  * invites.used_by, so a used invite still shows as used, just by "someone".
+ * Nominations go too: ones this user made are deleted (an approved, unused
+ * link stops working), and ones they signed up through lose the reference.
  * Admins can't be deleted here, which also means invites.created_by (always
  * an admin) never blocks a delete.
  */
@@ -199,11 +201,22 @@ export async function deleteUser(userId: number): Promise<DeleteUserResult> {
     return { ok: false, message: "Invalid user." };
   }
 
-  const [, , deleted] = (await sql.transaction([
+  // Nominations are only touched when the user can be deleted (not an admin).
+  const [, , , , deleted] = (await sql.transaction([
     sql`update shows set producer_id = null where producer_id = ${userId}`,
     sql`update invites set used_by = null where used_by = ${userId}`,
+    sql`
+      update nominations set signed_up_user_id = null
+      where signed_up_user_id = ${userId}
+        and exists (select 1 from users where id = ${userId} and role <> 'admin')
+    `,
+    sql`
+      delete from nominations
+      where nominated_by = ${userId}
+        and exists (select 1 from users where id = ${userId} and role <> 'admin')
+    `,
     sql`delete from users where id = ${userId} and role <> 'admin' returning id`,
-  ])) as unknown as [unknown, unknown, { id: number }[]];
+  ])) as unknown as [unknown, unknown, unknown, unknown, { id: number }[]];
 
   if (deleted.length === 0) {
     const found = await sql`select 1 from users where id = ${userId}`;
