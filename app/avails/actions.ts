@@ -1,8 +1,10 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { sql } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { loadAvailsProfile, loadVisibleShows, offersInTown } from "@/lib/avails";
+import { matchHomeMarket } from "@/lib/markets";
 
 /** available null means the show was left blank: any saved answer is removed. */
 export type AvailsAnswer = {
@@ -89,4 +91,22 @@ export async function submitAvails(
   ]);
 
   return { ok: true, saved: answered.length };
+}
+
+export type SetHomeMarketResult = { ok: boolean; error?: string };
+
+/** A comedian sets or changes their own home market. */
+export async function setOwnHomeMarket(homeMarket: string): Promise<SetHomeMarketResult> {
+  const user = await requireUser();
+
+  const market = typeof homeMarket === "string" ? matchHomeMarket(homeMarket) : null;
+  if (!market) {
+    return { ok: false, error: "Pick a home market from the list." };
+  }
+
+  await sql`update users set home_market = ${market} where id = ${user.id}`;
+  // Travel and "In town" depend on it, here and in the producer view.
+  revalidatePath("/avails");
+  revalidatePath("/producer");
+  return { ok: true };
 }

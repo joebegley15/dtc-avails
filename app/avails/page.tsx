@@ -6,8 +6,9 @@ import {
   offersInTown,
   loadVisibleShows,
 } from "@/lib/avails";
-import { formatCity } from "@/lib/markets";
+import { formatCity, matchHomeMarket } from "@/lib/markets";
 import { AvailsForm, type AvailsShow } from "./avails-form";
+import { HomeMarketEditor } from "./home-market-editor";
 
 export default async function AvailsPage() {
   const user = await requireUser();
@@ -64,11 +65,14 @@ export default async function AvailsPage() {
           <h1 className="text-lg font-semibold text-zinc-950">
             Avails for {user.name}
           </h1>
-          <p className="text-sm text-zinc-500">
-            {profile.homeMarket
-              ? `Home market: ${profile.homeMarket}`
-              : "Home market: not set, ask Joe to add it"}
-          </p>
+          <HomeMarketEditor
+            // Remount after a save so the picker starts from the new value.
+            key={profile.homeMarket ?? ""}
+            homeMarket={profile.homeMarket}
+            selectValue={
+              profile.homeMarket ? (matchHomeMarket(profile.homeMarket) ?? "") : ""
+            }
+          />
           <p className="mt-3 rounded-md bg-zinc-100 px-3 py-2 text-sm text-zinc-700">
             An important note: Only submit for dates you think you can make.
             And remember, submitting helps us sort through a big list of comics,
