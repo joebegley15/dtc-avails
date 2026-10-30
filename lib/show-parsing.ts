@@ -45,7 +45,7 @@ export type ShowValidation = {
 
 const MAX_CAPACITY = 2_000_000_000; // stays inside a Postgres integer
 
-/** Accepts YYYY-MM-DD or M/D/YYYY; returns YYYY-MM-DD, or null if not a real date. */
+/** Accepts YYYY-MM-DD, M/D/YYYY, or M/D/YY; returns YYYY-MM-DD, or null if not a real date. */
 export function parseDate(input: string): string | null {
   const value = input.trim();
   let year: number, month: number, day: number;
@@ -53,8 +53,9 @@ export function parseDate(input: string): string | null {
   let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(value);
   if (m) {
     [year, month, day] = [Number(m[1]), Number(m[2]), Number(m[3])];
-  } else if ((m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value))) {
+  } else if ((m = /^(\d{1,2})\/(\d{1,2})\/(\d{4}|\d{2})$/.exec(value))) {
     [month, day, year] = [Number(m[1]), Number(m[2]), Number(m[3])];
+    if (m[3].length === 2) year += 2000;
   } else {
     return null;
   }
@@ -121,6 +122,34 @@ export function splitProducerNames(input: string): string[] {
     .split(/[;,&/+\n]|\s+and\s+/i)
     .map((name) => name.trim())
     .filter((name) => name !== "");
+}
+
+/**
+ * Splits a CSV show title into city and neighborhood:
+ * "Houston, TX (Rice Village)" -> "Houston, TX" and "Rice Village".
+ * For a county, the parentheses name the city, which is what distance checks
+ * need: "Bell County, TX, (Belton)" -> "Belton, TX" and no neighborhood.
+ */
+export function parseShowTitle(input: string): {
+  city: string;
+  neighborhood: string;
+} {
+  const value = input.trim();
+  const m = /^(.*?)[\s,]*\(([^()]*)\)$/.exec(value);
+  const place = m ? m[1] : value;
+  const detail = m ? m[2].trim() : "";
+
+  const county = /^[^,]+\s+county\s*,\s*(.+)$/i.exec(place);
+  if (county && detail) {
+    return { city: `${detail}, ${county[1]}`, neighborhood: "" };
+  }
+  return { city: place, neighborhood: detail };
+}
+
+/** Splits a CSV showtime ("10/30/26 6:00 PM") into its date and time parts. */
+export function splitShowtime(input: string): { date: string; time: string } {
+  const [date = "", ...time] = input.trim().split(/[\s,]+/);
+  return { date, time: time.join(" ") };
 }
 
 /** Identity for duplicate detection: same date, time, and venue. */

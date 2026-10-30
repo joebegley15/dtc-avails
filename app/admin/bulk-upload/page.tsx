@@ -23,24 +23,30 @@ export default async function BulkUploadPage() {
         <p>
           Upload a CSV with these headers:{" "}
           <code className="rounded bg-zinc-100 px-1 py-0.5 text-zinc-800">
-            city, neighborhood, date, time, producer, venue, capacity, all_star
+            Show Title, Showtime, Producers, Venue, Venue Fee, Ticket Price, Sold
+            Tix, Capacity
           </code>
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>
-            Required: city, date, time, producer, venue. Optional:
-            neighborhood, capacity, all_star.
+            Required: Show Title, Showtime, Producers, Venue. Optional:
+            Capacity. Venue Fee, Ticket Price, and Sold Tix aren&apos;t imported.
           </li>
           <li>
-            All-star: &quot;yes&quot;, &quot;x&quot;, or &quot;★&quot; makes it an
-            all-star show, which only all-star comics see. Blank or
-            &quot;no&quot; means a regular show. You can also star shows on the
-            Shows page.
+            Show Title: the city and state, with the neighborhood in
+            parentheses, like &quot;Houston, TX (Rice Village)&quot;. For a
+            county, put the city in parentheses: &quot;Bell County, TX,
+            (Belton)&quot; is a show in Belton, TX.
           </li>
-          <li>Date: YYYY-MM-DD or M/D/YYYY.</li>
-          <li>Time: 20:00, 8:00 PM, or 8 PM.</li>
+          <li>Showtime: the date then the time, like 10/30/26 6:00 PM.</li>
           <li>
-            Producer: a producer or admin&apos;s name as it appears in Users.
+            All-star: imported shows are regular shows. Star them on the Shows
+            page, or add an all_star column where &quot;yes&quot;,
+            &quot;x&quot;, or &quot;★&quot; makes it an all-star show, which
+            only all-star comics see.
+          </li>
+          <li>
+            Producers: a producer or admin&apos;s name as it appears in Users.
             Separate several with &quot;;&quot;, &quot;,&quot;, &quot;&amp;&quot;,
             or &quot;and&quot;. A first initial and last name (&quot;T.
             Truman&quot;) or a small spelling mistake still finds the right

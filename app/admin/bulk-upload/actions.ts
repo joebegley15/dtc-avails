@@ -5,8 +5,10 @@ import { revalidatePath } from "next/cache";
 import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import {
+  parseShowTitle,
   showKey,
   splitProducerNames,
+  splitShowtime,
   validateShowInput,
   type ParsedShow,
   type ProducerMatch,
@@ -18,11 +20,9 @@ import {
 } from "@/lib/shows";
 
 const CSV_FIELDS = [
-  "city",
-  "neighborhood",
-  "date",
-  "time",
-  "producer",
+  "show_title",
+  "showtime",
+  "producers",
   "venue",
   "capacity",
   "all_star",
@@ -103,16 +103,14 @@ async function validateRows(
     const picked = picks.get(i + 1);
     return validateShowInput(
       {
-        city: raw.city,
-        neighborhood: raw.neighborhood,
-        date: raw.date,
-        time: raw.time,
+        ...parseShowTitle(raw.show_title),
+        ...splitShowtime(raw.showtime),
         venue: raw.venue,
         capacity: raw.capacity,
         allStar: raw.all_star,
         ...(picked
           ? { producerIds: picked }
-          : { producerNames: splitProducerNames(raw.producer) }),
+          : { producerNames: splitProducerNames(raw.producers) }),
       },
       producers
     );

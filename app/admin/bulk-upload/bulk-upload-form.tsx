@@ -3,7 +3,11 @@
 import Papa from "papaparse";
 import { useRef, useState, useTransition } from "react";
 import { formatShowDate, formatShowTime } from "@/lib/format";
-import type { ProducerOption } from "@/lib/show-parsing";
+import {
+  parseShowTitle,
+  splitShowtime,
+  type ProducerOption,
+} from "@/lib/show-parsing";
 import { ProducerPicker } from "../shows/producer-picker";
 import {
   importShows,
@@ -13,20 +17,19 @@ import {
   type ProducerPicks,
 } from "./actions";
 
-const REQUIRED_HEADERS = ["city", "date", "time", "producer", "venue"];
+const REQUIRED_HEADERS = ["show_title", "showtime", "producers", "venue"];
 const KNOWN_HEADERS = [
-  "city",
-  "neighborhood",
-  "date",
-  "time",
-  "producer",
+  "show_title",
+  "showtime",
+  "producers",
   "venue",
   "capacity",
   "all_star",
 ] as const;
 
-// Other spellings people use for the all-star column.
+// The export's "Show Title", and other spellings people use for the all-star column.
 const HEADER_ALIASES: Record<string, string> = {
+  "show title": "show_title",
   "all-star": "all_star",
   "all star": "all_star",
   allstar: "all_star",
@@ -78,7 +81,8 @@ export function BulkUploadForm({ producers }: { producers: ProducerOption[] }) {
         const headers = results.meta.fields ?? [];
         const missing = REQUIRED_HEADERS.filter((h) => !headers.includes(h));
         if (missing.length > 0) {
-          setError(`The CSV is missing required column(s): ${missing.join(", ")}.`);
+          const names = missing.map((h) => h.replace("_", " "));
+          setError(`The CSV is missing required column(s): ${names.join(", ")}.`);
           return;
         }
         if (results.data.length === 0) {
@@ -273,6 +277,9 @@ function PreviewTableRow({
   onPick: (ids: number[] | null) => void;
 }) {
   const { raw, show } = row;
+  // What the CSV cells split into, shown when the row didn't parse.
+  const title = parseShowTitle(raw.show_title);
+  const when = splitShowtime(raw.showtime);
   const hasErrors = row.errors.length > 0;
   const selectable = isSelectable(row);
   const unchecked = selectable && !selected;
@@ -321,13 +328,13 @@ function PreviewTableRow({
           <span className="font-medium text-emerald-700">Ready</span>
         )}
       </td>
-      <td className="px-2 py-2">{show?.city ?? raw.city}</td>
-      <td className="px-2 py-2">{show ? (show.neighborhood ?? "—") : raw.neighborhood}</td>
+      <td className="px-2 py-2">{show?.city ?? title.city}</td>
+      <td className="px-2 py-2">{show ? (show.neighborhood ?? "—") : title.neighborhood}</td>
       <td className="whitespace-nowrap px-2 py-2">
-        {show ? formatShowDate(show.showDate, true) : raw.date}
+        {show ? formatShowDate(show.showDate, true) : when.date}
       </td>
       <td className="whitespace-nowrap px-2 py-2">
-        {show ? formatShowTime(show.showTime) : raw.time}
+        {show ? formatShowTime(show.showTime) : when.time}
       </td>
       <td className="px-2 py-2">{show?.venue ?? raw.venue}</td>
       <td className="px-2 py-2">{show ? (show.capacity ?? "—") : raw.capacity}</td>
@@ -337,7 +344,7 @@ function PreviewTableRow({
       <td className="px-2 py-2">
         {showPicker ? (
           <ProducerCellPicker
-            raw={raw.producer}
+            raw={raw.producers}
             producers={producers}
             selected={pickedIds ?? row.producerIds}
             picked={row.producerPicked}
@@ -346,7 +353,7 @@ function PreviewTableRow({
         ) : show ? (
           row.producerNames.join(", ")
         ) : (
-          raw.producer
+          raw.producers
         )}
         {!row.producerPicked && notes.map((m) => (
           <p
