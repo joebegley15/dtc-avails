@@ -13,8 +13,9 @@ export type AvailsShow = {
   isAllStar: boolean;
   /** All-star show and this user isn't an all-star: shown greyed out. */
   locked: boolean;
+  /** More than 50 miles from the home market (see isTravelShow). */
   isTravel: boolean;
-  /** More than 50 miles from home (or unknown): the "In town" box is shown. */
+  /** Travel, or no home market set: the "In town" box is shown. */
   offersInTown: boolean;
 };
 

@@ -3,8 +3,8 @@ import { cityPart } from "./location";
 /**
  * Home markets a comedian can pick: the 20 most populous cities in Texas
  * plus the Oklahoma cities over 100k (2020 census), alphabetical. Stored in
- * the same "City, ST" form as shows.city, so the travel check (which compares
- * city parts) lines up.
+ * the same "City, ST" form as shows.city, so the travel check (which looks
+ * both up in the zip code database) lines up.
  */
 export const HOME_MARKETS = [
   "Amarillo, TX",

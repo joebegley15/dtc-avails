@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
-import { COUNTED_AVAIL, offersInTown } from "@/lib/avails";
+import { COUNTED_AVAIL, isTravelShow, offersInTown } from "@/lib/avails";
 import {
   ProducerShowsView,
   type ProducerOption,
@@ -52,10 +52,6 @@ const SHOW_COLUMNS = `
   coalesce(array_agg(distinct u.id) filter (where u.id is not null), '{}') as producer_ids,
   coalesce(array_agg(distinct u.name) filter (where u.name is not null), '{}') as producer_names
 `;
-
-function cityPart(location: string): string {
-  return location.split(",")[0]?.trim().toLowerCase() ?? "";
-}
 
 export default async function ProducerPage({
   searchParams,
@@ -155,7 +151,7 @@ export default async function ProducerPage({
       email: c.email,
       homeMarket: c.home_market,
       isAllStar: c.is_all_star,
-      isTravel: c.home_market ? cityPart(c.home_market) !== cityPart(s.city) : false,
+      isTravel: isTravelShow(s.city, c.home_market),
       available: c.available,
       downToHelp: c.down_to_help,
       // Ignore answers saved before the 50-mile rule for shows close to home.
