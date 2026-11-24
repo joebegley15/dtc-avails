@@ -1,10 +1,10 @@
 import { cityPart } from "./location";
 
 /**
- * Home markets a comedian can pick: the 20 most populous cities in Texas
- * plus the Oklahoma cities over 100k (2020 census), alphabetical. Stored in
- * the same "City, ST" form as shows.city, so the travel check (which looks
- * both up in the zip code database) lines up.
+ * The common home markets: the 20 most populous cities in Texas plus the
+ * Oklahoma cities over 100k (2020 census), alphabetical. Any US city can be a
+ * home market (see lib/cities); these are the suggestions shown before
+ * someone types, and where a city given without a state is looked for first.
  */
 export const HOME_MARKETS = [
   "Amarillo, TX",

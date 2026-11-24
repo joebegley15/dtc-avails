@@ -6,7 +6,7 @@ import { sql } from "@/lib/db";
 import { DEFAULT_PASSWORD, requireAdmin } from "@/lib/auth";
 import { buildLink, generateToken } from "@/lib/tokens";
 import type { Role } from "@/lib/session";
-import { matchHomeMarket } from "@/lib/markets";
+import { matchCity } from "@/lib/cities";
 
 const MIN_PASSWORD_LENGTH = 6;
 // bcrypt only uses the first 72 bytes; reject longer input instead of
@@ -52,8 +52,8 @@ export async function createUser(
   if (!ROLES.includes(role)) {
     return { error: "Invalid role." };
   }
-  if (homeMarket && !matchHomeMarket(homeMarket)) {
-    return { error: "Pick a home market from the list." };
+  if (homeMarket && !matchCity(homeMarket)) {
+    return { error: "Enter a US city, like Austin, TX." };
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
@@ -61,7 +61,7 @@ export async function createUser(
   try {
     await sql`
       insert into users (name, email, password_hash, role, home_market, is_all_star)
-      values (${name}, ${email}, ${passwordHash}, ${role}, ${matchHomeMarket(homeMarket)}, ${isAllStar})
+      values (${name}, ${email}, ${passwordHash}, ${role}, ${matchCity(homeMarket)}, ${isAllStar})
     `;
   } catch (err) {
     if (err instanceof Error && "code" in err && err.code === "23505") {
@@ -246,9 +246,9 @@ export async function setHomeMarket(
   if (!validUserId(userId) || typeof homeMarket !== "string") {
     return { ok: false, error: "Invalid request." };
   }
-  const market = homeMarket ? matchHomeMarket(homeMarket) : null;
+  const market = homeMarket ? matchCity(homeMarket) : null;
   if (homeMarket && !market) {
-    return { ok: false, error: "Pick a home market from the list." };
+    return { ok: false, error: "Enter a US city, like Austin, TX." };
   }
 
   const updated = await sql`

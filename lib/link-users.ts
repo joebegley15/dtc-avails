@@ -1,6 +1,6 @@
 // Pure planning and validation for the bulk link-user upload. No database
 // access: callers pass in the existing users to match against.
-import { matchHomeMarket } from "./markets";
+import { matchCity } from "./cities";
 import { duplicateNameWarnings, type NamedPerson } from "./name-duplicates";
 
 export const LINK_CSV_FIELDS = ["name", "home_market", "all_star"] as const;
@@ -91,10 +91,10 @@ export function planLinkUsers(
 
     const homeMarketRaw = raw.home_market.trim();
     const homeMarket = homeMarketRaw
-      ? matchHomeMarket(homeMarketRaw)
+      ? matchCity(homeMarketRaw)
       : DEFAULT_HOME_MARKET;
     if (!homeMarket) {
-      errors.push(`Home market not in the list: ${homeMarketRaw}`);
+      errors.push(`Home market isn't a US city: ${homeMarketRaw}`);
     }
 
     if (name) {

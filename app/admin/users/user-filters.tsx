@@ -2,9 +2,8 @@
 
 import { useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { HOME_MARKETS } from "@/lib/markets";
 
-/** Sentinel for "home market is blank or not one of HOME_MARKETS". */
+/** Sentinel for "home market is blank or not a recognized city". */
 export const OTHER_MARKET = "other";
 
 const selectClass =
@@ -13,6 +12,7 @@ const selectClass =
 export function UserFilters({
   role,
   market,
+  markets,
   status,
   query,
   activated,
@@ -21,6 +21,8 @@ export function UserFilters({
 }: {
   role: string;
   market: string;
+  /** Home markets users have, for the filter's options. */
+  markets: string[];
   status: string;
   query: string;
   /** How many of all users (unfiltered) have activated their account. */
@@ -97,12 +99,12 @@ export function UserFilters({
         className={selectClass}
       >
         <option value="">All home markets</option>
-        {HOME_MARKETS.map((m) => (
+        {markets.map((m) => (
           <option key={m} value={m}>
             {m}
           </option>
         ))}
-        <option value={OTHER_MARKET}>Other / not set</option>
+        <option value={OTHER_MARKET}>Not set / unrecognized</option>
       </select>
       <select
         aria-label="Filter by account status"

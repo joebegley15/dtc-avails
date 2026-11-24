@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { HOME_MARKETS } from "@/lib/markets";
+import { CityCombobox } from "@/components/city-combobox";
 import { getInviteLink, setAllStar, setHomeMarket } from "./actions";
 
 export function HomeMarketCell({
@@ -13,37 +13,23 @@ export function HomeMarketCell({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  // Values saved before the dropdown existed ("Austin", "Lawton, OK") stay
-  // visible as their own option until someone picks a listed one.
-  const legacy =
-    homeMarket && !(HOME_MARKETS as readonly string[]).includes(homeMarket)
-      ? homeMarket
-      : null;
 
   return (
     <div className="flex flex-col gap-0.5">
-      <select
+      {/* Saves when a city is picked, or when edited text is left (blank clears it). */}
+      <CityCombobox
         defaultValue={homeMarket ?? ""}
         disabled={pending}
-        aria-label="Home market"
-        onChange={(e) => {
-          const value = e.target.value;
+        placeholder="—"
+        onCommit={(value) => {
           setError(null);
           startTransition(async () => {
-            const result = await setHomeMarket(userId, value);
+            const result = await setHomeMarket(userId, value.trim());
             if (!result.ok) setError(result.error ?? "Couldn't save.");
           });
         }}
-        className="rounded-md border border-black/10 bg-transparent px-2 py-1 text-sm text-zinc-700 outline-none focus:border-[#DA1717] disabled:opacity-50"
-      >
-        <option value="">—</option>
-        {legacy && <option value={legacy}>{legacy} (old)</option>}
-        {HOME_MARKETS.map((m) => (
-          <option key={m} value={m}>
-            {m}
-          </option>
-        ))}
-      </select>
+        className="w-44 rounded-md border border-black/10 bg-transparent px-2 py-1 text-sm text-zinc-700 outline-none focus:border-[#DA1717] disabled:opacity-50"
+      />
       {error && <span className="text-xs text-red-600">{error}</span>}
     </div>
   );

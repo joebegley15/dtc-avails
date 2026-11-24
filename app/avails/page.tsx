@@ -6,7 +6,8 @@ import {
   offersInTown,
   loadVisibleShows,
 } from "@/lib/avails";
-import { formatCity, matchHomeMarket } from "@/lib/markets";
+import { matchCity } from "@/lib/cities";
+import { formatCity } from "@/lib/markets";
 import { AvailsForm, type AvailsShow } from "./avails-form";
 import { HomeMarketEditor } from "./home-market-editor";
 
@@ -70,7 +71,9 @@ export default async function AvailsPage() {
             key={profile.homeMarket ?? ""}
             homeMarket={profile.homeMarket}
             selectValue={
-              profile.homeMarket ? (matchHomeMarket(profile.homeMarket) ?? "") : ""
+              profile.homeMarket
+                ? (matchCity(profile.homeMarket) ?? profile.homeMarket)
+                : ""
             }
           />
           <p className="mt-3 rounded-md bg-zinc-100 px-3 py-2 text-sm text-zinc-700">

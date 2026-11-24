@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { sql } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { loadAvailsProfile, loadVisibleShows, offersInTown } from "@/lib/avails";
-import { matchHomeMarket } from "@/lib/markets";
+import { matchCity } from "@/lib/cities";
 
 /** available null means the show was left blank: any saved answer is removed. */
 export type AvailsAnswer = {
@@ -99,9 +99,9 @@ export type SetHomeMarketResult = { ok: boolean; error?: string };
 export async function setOwnHomeMarket(homeMarket: string): Promise<SetHomeMarketResult> {
   const user = await requireUser();
 
-  const market = typeof homeMarket === "string" ? matchHomeMarket(homeMarket) : null;
+  const market = typeof homeMarket === "string" ? matchCity(homeMarket) : null;
   if (!market) {
-    return { ok: false, error: "Pick a home market from the list." };
+    return { ok: false, error: "Enter a US city, like Austin, TX." };
   }
 
   await sql`update users set home_market = ${market} where id = ${user.id}`;

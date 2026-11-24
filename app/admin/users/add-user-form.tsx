@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
-import { HomeMarketSelect } from "@/components/home-market-select";
+import { CityCombobox } from "@/components/city-combobox";
 import { createUser, type AddUserState } from "./actions";
 
 const initialState: AddUserState = {};
@@ -46,7 +46,7 @@ export function AddUserForm() {
         <option value="producer">Producer</option>
         <option value="comic">Comic</option>
       </select>
-      <HomeMarketSelect name="homeMarket" defaultValue="" className={inputClass} />
+      <CityCombobox name="homeMarket" placeholder="Home city (optional)" className={inputClass} />
       <label className="flex items-center gap-2 text-sm text-zinc-700">
         <input type="checkbox" name="isAllStar" className="h-4 w-4" />
         All-star

@@ -6,7 +6,7 @@ import { sql } from "@/lib/db";
 import { createSession } from "@/lib/session";
 import { roleHomePath } from "@/lib/roles";
 import { claimInviteAndCreateUser, lookupInvite } from "@/lib/invites";
-import { matchHomeMarket } from "@/lib/markets";
+import { matchCity } from "@/lib/cities";
 
 export type AcceptInviteState = {
   error?: string;
@@ -49,8 +49,8 @@ export async function acceptInvite(
   if (!email || !EMAIL_RE.test(email)) {
     return { error: "Enter a valid email.", values };
   }
-  if (homeMarket && !matchHomeMarket(homeMarket)) {
-    return { error: "Pick a home market from the list.", values };
+  if (homeMarket && !matchCity(homeMarket)) {
+    return { error: "Enter a US city, like Austin, TX.", values };
   }
   if (password.length < MIN_PASSWORD_LENGTH) {
     return {
@@ -78,7 +78,7 @@ export async function acceptInvite(
     email,
     passwordHash,
     role: invite.role,
-    homeMarket: matchHomeMarket(homeMarket),
+    homeMarket: matchCity(homeMarket),
   });
 
   if (userId === null) {

@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { sql } from "@/lib/db";
 import { createSession } from "@/lib/session";
-import { matchHomeMarket } from "@/lib/markets";
+import { matchCity } from "@/lib/cities";
 import { INVALID_INVITE_MESSAGE } from "@/lib/nomination-message";
 import {
   claimNominationAndCreateUser,
@@ -66,8 +66,8 @@ export async function signUpFromInvite(
   if (!email || !EMAIL_RE.test(email)) {
     return { error: "Enter a valid email. You'll use it to sign in.", values };
   }
-  if (homeMarket && !matchHomeMarket(homeMarket)) {
-    return { error: "Pick a home market from the list.", values };
+  if (homeMarket && !matchCity(homeMarket)) {
+    return { error: "Enter a US city, like Austin, TX.", values };
   }
   if (password.length < MIN_PASSWORD_LENGTH) {
     return {
@@ -95,7 +95,7 @@ export async function signUpFromInvite(
       name,
       email,
       passwordHash,
-      homeMarket: matchHomeMarket(homeMarket),
+      homeMarket: matchCity(homeMarket),
     });
   } catch (err) {
     // The same email signed up a moment ago (users_email_key).

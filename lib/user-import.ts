@@ -1,6 +1,6 @@
 // Pure planning and validation for the bulk user import. No database access:
 // callers pass in the existing users.
-import { matchHomeMarket } from "./markets";
+import { matchCity } from "./cities";
 import { duplicateNameWarnings, type NamedPerson } from "./name-duplicates";
 
 export const USER_CSV_FIELDS = [
@@ -109,9 +109,9 @@ export function planUserImport(
       errors.push(`Bad role: ${raw.role.trim()}`);
     }
 
-    const market = homeMarket ? matchHomeMarket(homeMarket) : null;
+    const market = homeMarket ? matchCity(homeMarket) : null;
     if (homeMarket && !market) {
-      errors.push(`Home market not in the list: ${homeMarket}`);
+      errors.push(`Home market isn't a US city: ${homeMarket}`);
     }
 
     if (allStar === "bad") errors.push(`Bad all-star value: ${raw.is_all_star.trim()}`);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { HomeMarketSelect } from "@/components/home-market-select";
+import { CityCombobox } from "@/components/city-combobox";
 import { setOwnHomeMarket } from "./actions";
 
 const selectClass =
@@ -17,7 +17,7 @@ export function HomeMarketEditor({
 }: {
   /** As stored, for display. */
   homeMarket: string | null;
-  /** The matching list entry, or "" if none matches. */
+  /** The picker's starting text: the canonical city when it's recognized. */
   selectValue: string;
 }) {
   const [editing, setEditing] = useState(false);
@@ -36,18 +36,19 @@ export function HomeMarketEditor({
 
   const picker = (
     <div className="flex flex-wrap items-center gap-2">
-      <HomeMarketSelect
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        disabled={saving}
-        emptyLabel="Pick your home market"
-        aria-label="Home market"
-        className={selectClass}
-      />
+      <div className="w-64 max-w-full">
+        <CityCombobox
+          defaultValue={value}
+          onChange={setValue}
+          disabled={saving}
+          placeholder="Start typing your city"
+          className={selectClass}
+        />
+      </div>
       <button
         type="button"
         onClick={save}
-        disabled={saving || value === ""}
+        disabled={saving || value.trim() === ""}
         className="h-9 rounded-md bg-[#DA1717] px-3 text-sm font-medium text-white disabled:opacity-50"
       >
         {saving ? "Saving…" : "Save"}

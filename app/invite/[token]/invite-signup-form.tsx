@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { HomeMarketSelect } from "@/components/home-market-select";
+import { CityCombobox } from "@/components/city-combobox";
 import { signUpFromInvite, type InviteSignupState } from "./actions";
 
 const initialState: InviteSignupState = {};
@@ -39,11 +39,11 @@ export function InviteSignupForm({ token, name }: { token: string; name: string 
           className={inputClass}
         />
       </label>
-      <HomeMarketSelect
-        // Keyed on the echoed value: a select only reads defaultValue on mount.
+      <CityCombobox
+        // Keyed on the echoed value: it only reads defaultValue on mount.
         key={state.values?.homeMarket ?? ""}
         name="homeMarket"
-        aria-label="Home market"
+        aria-label="Home city"
         defaultValue={state.values?.homeMarket ?? ""}
         className={inputClass}
       />

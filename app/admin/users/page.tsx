@@ -8,7 +8,7 @@ import { EditUserButton } from "./edit-user-button";
 import { LinkCell } from "./link-cell";
 import { ResetPasswordButton } from "./reset-password-button";
 import { ResetToDefaultButton } from "./reset-to-default-button";
-import { matchHomeMarket } from "@/lib/markets";
+import { matchCity } from "@/lib/cities";
 import { AllStarToggle, HomeMarketCell, InviteLinkButton } from "./user-cells";
 import { OTHER_MARKET, UserFilters } from "./user-filters";
 
@@ -42,8 +42,7 @@ export default async function AdminUsersPage({
   const status = STATUSES.includes(statusParam) ? statusParam : "";
   const marketParam = typeof params.market === "string" ? params.market : "";
   const role = ROLES.includes(roleParam) ? roleParam : "";
-  const market =
-    marketParam === OTHER_MARKET ? OTHER_MARKET : (matchHomeMarket(marketParam) ?? "");
+  const marketMatch = marketParam === OTHER_MARKET ? OTHER_MARKET : matchCity(marketParam);
 
   const allUsers = (await sql`
     select id, name, email, role, home_market, is_all_star, has_truck, access_token,
@@ -54,8 +53,20 @@ export default async function AdminUsersPage({
     order by lower(name), id
   `) as UserRow[];
 
-  // Matched through matchHomeMarket so values saved before the dropdown
-  // ("Austin") still count as their listed city ("Austin, TX").
+  // Each user's market through matchCity, so values saved in other forms
+  // ("Austin") count as their city ("Austin, TX").
+  const userMarkets = new Map(
+    allUsers.map((u) => [u.id, u.home_market ? matchCity(u.home_market) : null])
+  );
+  // Filter options: every market a user has.
+  const markets = [...new Set(userMarkets.values())]
+    .filter((m): m is string => m !== null)
+    .sort((a, b) => a.localeCompare(b));
+  const market =
+    marketMatch && (marketMatch === OTHER_MARKET || markets.includes(marketMatch))
+      ? marketMatch
+      : "";
+
   const filtered = allUsers.filter((u) => {
     if (
       needle &&
@@ -67,7 +78,7 @@ export default async function AdminUsersPage({
     if (role && u.role !== role) return false;
     if (status && u.activated !== (status === "activated")) return false;
     if (market) {
-      const userMarket = u.home_market ? matchHomeMarket(u.home_market) : null;
+      const userMarket = userMarkets.get(u.id) ?? null;
       return market === OTHER_MARKET ? userMarket === null : userMarket === market;
     }
     return true;
@@ -112,6 +123,7 @@ export default async function AdminUsersPage({
         key={`${role}|${market}|${status}`}
         role={role}
         market={market}
+        markets={markets}
         status={status}
         query={query}
         activated={activatedCount}
