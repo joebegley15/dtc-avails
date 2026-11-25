@@ -144,6 +144,9 @@ export function ShowEditRow({
             onChange={(ids) => set("producerIds", ids)}
           />
         </td>
+        <td className="px-2 py-2 tabular-nums text-zinc-400">
+          {show ? `${show.in_count} / ${show.out_count}` : "—"}
+        </td>
         <td className="px-2 py-2">
           <AllStarButton
             isAllStar={values.isAllStar}
@@ -172,7 +175,7 @@ export function ShowEditRow({
       </tr>
       {errors.length > 0 && (
         <tr className="bg-zinc-50">
-          <td colSpan={9} className="border-l-4 border-transparent px-2 pb-3">
+          <td colSpan={10} className="border-l-4 border-transparent px-2 pb-3">
             <ul className="list-disc pl-5 text-sm text-red-600">
               {errors.map((e) => (
                 <li key={e}>{e}</li>

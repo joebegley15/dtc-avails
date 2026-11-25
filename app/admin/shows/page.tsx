@@ -1,6 +1,7 @@
 import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { loadProducerOptions } from "@/lib/shows";
+import { COUNTED_AVAIL } from "@/lib/avails";
 import { ImportBanner } from "./import-banner";
 import { ShowsManager } from "./shows-manager";
 import type { ShowRowData } from "./types";
@@ -29,11 +30,23 @@ export default async function AdminShowsPage({
         to_char(s.show_time, 'HH24:MI') as show_time,
         s.venue, s.capacity, s.is_all_star,
         coalesce(array_agg(u.id order by u.name) filter (where u.id is not null), '{}') as producer_ids,
-        coalesce(array_agg(u.name order by u.name) filter (where u.id is not null), '{}') as producer_names
+        coalesce(array_agg(u.name order by u.name) filter (where u.id is not null), '{}') as producer_names,
+        coalesce(r.in_count, 0) as in_count,
+        coalesce(r.out_count, 0) as out_count
       from shows s
       left join show_producers sp on sp.show_id = s.id
       left join users u on u.id = sp.producer_id
-      group by s.id
+      -- Same counting rule as the producer page: an all-star show only
+      -- counts answers from all-star comics.
+      left join lateral (
+        select
+          count(*) filter (where a.available)::int as in_count,
+          count(*) filter (where not a.available)::int as out_count
+        from avails a
+        join users u on u.id = a.user_id
+        where a.show_id = s.id and ${sql.unsafe(COUNTED_AVAIL)}
+      ) r on true
+      group by s.id, r.in_count, r.out_count
       order by s.show_date, s.show_time, s.id
     ` as unknown as Promise<ShowRowData[]>,
     loadProducerOptions(),

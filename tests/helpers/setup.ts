@@ -23,6 +23,9 @@ vi.mock("next/navigation", async () => {
     redirect: (url: string) => {
       throw new RedirectError(url);
     },
+    notFound: () => {
+      throw new Error("NEXT_NOT_FOUND");
+    },
   };
 });
 

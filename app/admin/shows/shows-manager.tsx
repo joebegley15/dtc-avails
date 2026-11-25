@@ -167,6 +167,7 @@ export function ShowsManager({
             <th className="px-2 py-2">Venue</th>
             <th className="px-2 py-2">Capacity</th>
             <th className="px-2 py-2">Producers</th>
+            <th className="whitespace-nowrap px-2 py-2">In / Out</th>
             <th className="whitespace-nowrap px-2 py-2">All-star</th>
             <th className="px-2 py-2">
               <span className="sr-only">Actions</span>
@@ -211,7 +212,7 @@ export function ShowsManager({
           )}
           {visible.length === 0 && editing !== "new" && (
             <tr>
-              <td colSpan={9} className="py-6 text-center text-zinc-500">
+              <td colSpan={10} className="py-6 text-center text-zinc-500">
                 No shows to show.
               </td>
             </tr>
@@ -267,7 +268,14 @@ function ShowRow({
         {show.city}
       </td>
       <td className="px-2 py-2 text-zinc-600">{show.neighborhood ?? "—"}</td>
-      <td className="px-2 py-2 text-zinc-700">{show.venue}</td>
+      <td className="px-2 py-2 text-zinc-700">
+        <Link
+          href={`/admin/shows/${show.id}`}
+          className="underline decoration-zinc-300 underline-offset-2 hover:text-[#DA1717]"
+        >
+          {show.venue}
+        </Link>
+      </td>
       <td className="px-2 py-2 text-zinc-600">{show.capacity ?? "—"}</td>
       <td className="px-2 py-2 text-zinc-600">
         {show.producer_ids.length > 0
@@ -283,6 +291,20 @@ function ShowRow({
               </span>
             ))
           : "—"}
+      </td>
+      <td
+        className="whitespace-nowrap px-2 py-2 tabular-nums"
+        title={`${show.in_count} in, ${show.out_count} out`}
+      >
+        <Link
+          href={`/admin/shows/${show.id}`}
+          aria-label={`See who answered for ${show.city}: ${show.in_count} in, ${show.out_count} out`}
+          className="rounded hover:underline"
+        >
+          <span className="font-medium text-emerald-700">{show.in_count}</span>
+          <span className="text-zinc-400"> / </span>
+          <span className="text-zinc-600">{show.out_count}</span>
+        </Link>
       </td>
       <td className="px-2 py-2">
         <AllStarButton

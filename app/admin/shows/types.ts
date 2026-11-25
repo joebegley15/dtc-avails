@@ -9,4 +9,6 @@ export type ShowRowData = {
   is_all_star: boolean;
   producer_ids: number[];
   producer_names: string[];
+  in_count: number;
+  out_count: number;
 };
