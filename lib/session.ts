@@ -1,17 +1,21 @@
 import { cookies } from "next/headers";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { sql } from "./db";
+import type { Role } from "./roles";
+import type { PassLevel } from "./pass-level";
+
+export type { Role } from "./roles";
 
 export const SESSION_COOKIE_NAME = "dtc_session";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 days
-
-export type Role = "admin" | "producer" | "comic";
 
 export type CurrentUser = {
   id: number;
   name: string;
   role: Role;
   is_all_star: boolean;
+  /** "local" comics only see shows near their home market. */
+  pass_level: PassLevel;
   /**
    * Must finish setting up their account before using the app: set by an
    * admin, or implied by having no password (a link-only comic).
@@ -83,7 +87,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   if (userId === null) return null;
 
   const rows = (await sql`
-    select id, name, role, is_all_star,
+    select id, name, role, is_all_star, pass_level,
       (must_change_password or password_hash is null) as must_change_password,
       password_hash is not null as has_password,
       email is not null as has_email

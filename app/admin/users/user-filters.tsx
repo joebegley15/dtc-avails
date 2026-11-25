@@ -90,6 +90,8 @@ export function UserFilters({
         <option value="">All user types</option>
         <option value="comic">Comics</option>
         <option value="producer">Producers</option>
+        <option value="lead_producer">Lead Producers</option>
+        <option value="booker">Bookers</option>
         <option value="admin">Admins</option>
       </select>
       <select

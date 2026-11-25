@@ -1,5 +1,11 @@
 import { redirect } from "next/navigation";
-import { roleHomePath } from "./roles";
+import {
+  canSubmitAvails,
+  canViewBookerViews,
+  isProducing,
+  roleHomePath,
+  type Role,
+} from "./roles";
 import { getCurrentUser, type CurrentUser } from "./session";
 
 /**
@@ -40,6 +46,39 @@ export async function requireAdmin(): Promise<CurrentUser> {
     redirect("/");
   }
   return user;
+}
+
+/**
+ * Gate for a page or action limited to some roles. Anyone else is sent to
+ * their own home page. Like requireAdmin, call it first in every page and
+ * server action it protects.
+ */
+async function requireRoleWhere(allowed: (role: Role) => boolean): Promise<CurrentUser> {
+  const user = await requireUser();
+  if (!allowed(user.role)) {
+    redirect(roleHomePath(user.role));
+  }
+  return user;
+}
+
+/** Producers, Lead Producers and admins: the producer dashboard. */
+export function requireProducer(): Promise<CurrentUser> {
+  return requireRoleWhere(isProducing);
+}
+
+/** Lead Producers only: their one-at-a-time "Create user" form. */
+export function requireLeadProducer(): Promise<CurrentUser> {
+  return requireRoleWhere((role) => role === "lead_producer");
+}
+
+/** Everyone who submits avails as a comedian (not Bookers). */
+export function requireComedian(): Promise<CurrentUser> {
+  return requireRoleWhere(canSubmitAvails);
+}
+
+/** Bookers and admins: the read-only booker views and export. */
+export function requireBookerViewer(): Promise<CurrentUser> {
+  return requireRoleWhere(canViewBookerViews);
 }
 
 /**

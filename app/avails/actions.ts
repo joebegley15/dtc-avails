@@ -2,9 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { sql } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
-import { loadAvailsProfile, loadVisibleShows, offersInTown } from "@/lib/avails";
+import { requireComedian } from "@/lib/auth";
+import {
+  isLocalPass,
+  loadAvailsProfile,
+  loadVisibleShows,
+  offersInTown,
+} from "@/lib/avails";
 import { matchCity } from "@/lib/cities";
+import { ensureCityCoords } from "@/lib/city-coords";
 
 /** available null means the show was left blank: any saved answer is removed. */
 export type AvailsAnswer = {
@@ -23,7 +29,9 @@ export async function submitAvails(
   answers: AvailsAnswer[],
   hasTruck: boolean
 ): Promise<SubmitAvailsResult> {
-  const user = await requireUser();
+  // Bookers can't submit. Locally passed comics are limited by
+  // loadVisibleShows below, which decides every show that may be saved.
+  const user = await requireComedian();
 
   if (typeof hasTruck !== "boolean") {
     return { ok: false, saved: 0, error: "Answer whether you have a truck." };
@@ -95,9 +103,14 @@ export async function submitAvails(
 
 export type SetHomeMarketResult = { ok: boolean; error?: string };
 
-/** A comedian sets or changes their own home market. */
+/** A comedian sets or changes their own home market (not locally passed comics). */
 export async function setOwnHomeMarket(homeMarket: string): Promise<SetHomeMarketResult> {
-  const user = await requireUser();
+  const user = await requireComedian();
+
+  // A local pass is tied to their home market, so only an admin moves it.
+  if (isLocalPass(user)) {
+    return { ok: false, error: "Ask an admin to change your home market." };
+  }
 
   const market = typeof homeMarket === "string" ? matchCity(homeMarket) : null;
   if (!market) {
@@ -105,6 +118,7 @@ export async function setOwnHomeMarket(homeMarket: string): Promise<SetHomeMarke
   }
 
   await sql`update users set home_market = ${market} where id = ${user.id}`;
+  await ensureCityCoords([market]);
   // Travel and "In town" depend on it, here and in the producer view.
   revalidatePath("/avails");
   revalidatePath("/producer");

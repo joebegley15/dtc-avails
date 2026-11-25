@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { CityCombobox } from "@/components/city-combobox";
-import { getInviteLink, setAllStar, setHomeMarket } from "./actions";
+import type { PassLevel } from "@/lib/pass-level";
+import { getInviteLink, setAllStar, setHomeMarket, setPassLevel } from "./actions";
 
 export function HomeMarketCell({
   userId,
@@ -99,6 +100,41 @@ export function InviteLinkButton({ userId }: { userId: number }) {
       >
         {pending ? "Making link…" : "Get invite link"}
       </button>
+      {error && <span className="text-xs text-red-600">{error}</span>}
+    </div>
+  );
+}
+
+/** A comic's pass level: full (any TX/OK show) or local (near home only). */
+export function PassLevelSelect({
+  userId,
+  passLevel,
+}: {
+  userId: number;
+  passLevel: PassLevel;
+}) {
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  return (
+    <div className="flex flex-col gap-0.5">
+      <select
+        aria-label="Pass level"
+        defaultValue={passLevel}
+        disabled={pending}
+        onChange={(e) => {
+          const next = e.target.value as PassLevel;
+          setError(null);
+          startTransition(async () => {
+            const result = await setPassLevel(userId, next);
+            if (!result.ok) setError(result.error ?? "Couldn't save.");
+          });
+        }}
+        className="rounded-md border border-black/10 bg-transparent px-2 py-1 text-sm text-zinc-700 outline-none focus:border-[#DA1717] disabled:opacity-50"
+      >
+        <option value="full">Full</option>
+        <option value="local">Local</option>
+      </select>
       {error && <span className="text-xs text-red-600">{error}</span>}
     </div>
   );

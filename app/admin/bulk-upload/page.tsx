@@ -30,7 +30,13 @@ export default async function BulkUploadPage() {
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>
             Required: Show Title, Showtime, Producers, Venue. Optional:
-            Capacity. Venue Fee, Ticket Price, and Sold Tix aren&apos;t imported.
+            Capacity, Show Status. Venue Fee, Ticket Price, and Sold Tix
+            aren&apos;t imported.
+          </li>
+          <li>
+            Show Status: rows marked &quot;Rejected&quot; are skipped
+            entirely. Any other status, or a blank, imports as usual. The
+            status itself isn&apos;t saved.
           </li>
           <li>
             Show Title: the city and state, with the neighborhood in

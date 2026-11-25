@@ -18,17 +18,10 @@ import {
   loadExistingShowKeys,
   loadProducerOptions,
 } from "@/lib/shows";
+import { isRejectedStatus, SHOW_CSV_FIELDS, type CsvRow } from "@/lib/show-csv";
+import { citiesMissingCoords, ensureCityCoords } from "@/lib/city-coords";
 
-const CSV_FIELDS = [
-  "show_title",
-  "showtime",
-  "producers",
-  "venue",
-  "capacity",
-  "all_star",
-] as const;
-
-export type CsvRow = Record<(typeof CSV_FIELDS)[number], string>;
+export type { CsvRow } from "@/lib/show-csv";
 
 export type PreviewRow = {
   /** 1-based position among the CSV's data rows. */
@@ -47,12 +40,26 @@ export type PreviewRow = {
   producerPicked: boolean;
   errors: string[];
   duplicate: "existing" | "in-file" | null;
+  /**
+   * Show Status was "Rejected": the row is skipped entirely, never
+   * validated, created, or updated.
+   */
+  rejected: boolean;
 };
 
 /** Producers the admin picked in the preview, by 1-based row number. */
 export type ProducerPicks = Record<number, number[]>;
 
-export type ValidateResult = { rows: PreviewRow[] } | { error: string };
+export type ValidateResult =
+  | {
+      rows: PreviewRow[];
+      /**
+       * Show cities with no coordinates: locally passed comics won't see
+       * those shows until they're added on /admin/cities.
+       */
+      citiesMissingCoords: string[];
+    }
+  | { error: string };
 
 const MAX_ROWS = 1000;
 
@@ -63,7 +70,7 @@ function coerceRow(value: unknown): CsvRow {
       ? (value as Record<string, unknown>)
       : {};
   const row = {} as CsvRow;
-  for (const field of CSV_FIELDS) {
+  for (const field of SHOW_CSV_FIELDS) {
     const v = source[field];
     row[field] = typeof v === "string" ? v : "";
   }
@@ -100,6 +107,7 @@ async function validateRows(
   const picks = coercePicks(rawPicks);
   const raws = input.map(coerceRow);
   const validations = raws.map((raw, i) => {
+    if (isRejectedStatus(raw.show_status)) return null;
     const picked = picks.get(i + 1);
     return validateShowInput(
       {
@@ -117,12 +125,27 @@ async function validateRows(
   });
 
   const dates = [
-    ...new Set(validations.flatMap((v) => (v.show ? [v.show.showDate] : []))),
+    ...new Set(validations.flatMap((v) => (v?.show ? [v.show.showDate] : []))),
   ];
   const existing = await loadExistingShowKeys(dates);
   const seenInFile = new Set<string>();
 
   const rows = validations.map((v, i): PreviewRow => {
+    if (v === null) {
+      return {
+        row: i + 1,
+        raw: raws[i],
+        show: null,
+        producerIds: [],
+        producerNames: [],
+        producerMatches: [],
+        producerErrors: [],
+        producerPicked: false,
+        errors: [],
+        duplicate: null,
+        rejected: true,
+      };
+    }
     let duplicate: PreviewRow["duplicate"] = null;
     if (v.show) {
       const key = showKey(v.show.showDate, v.show.showTime, v.show.venue);
@@ -145,10 +168,15 @@ async function validateRows(
       producerPicked: picks.has(i + 1),
       errors: v.errors,
       duplicate,
+      rejected: false,
     };
   });
 
-  return { rows };
+  const missingCoords = await citiesMissingCoords(
+    rows.flatMap((r) => (r.show ? [r.show.city] : []))
+  );
+
+  return { rows, citiesMissingCoords: missingCoords };
 }
 
 /** Validates only. Saves nothing. */
@@ -184,7 +212,7 @@ export async function importShows(
       ? excludedRows.filter((n): n is number => Number.isInteger(n))
       : []
   );
-  const importable = result.rows.filter((r) => r.show && !r.duplicate);
+  const importable = result.rows.filter((r) => r.show && !r.duplicate && !r.rejected);
   const toImport = importable.flatMap((r) =>
     r.show && !excluded.has(r.row) ? [r.show] : []
   );
@@ -203,8 +231,16 @@ export async function importShows(
     toImport.map(insertShowQuery)
   )) as unknown as unknown[][];
   const imported = results.filter((r) => r.length > 0).length;
-  const skipped = result.rows.length - imported;
+  const rejected = result.rows.filter((r) => r.rejected).length;
+  const errors = result.rows.filter((r) => r.errors.length > 0).length;
+  // Duplicates and unchecked rows.
+  const skipped = result.rows.length - imported - rejected - errors;
+
+  // So the local-pass distance check knows where the new shows are.
+  await ensureCityCoords(toImport.map((s) => s.city));
 
   revalidatePath("/admin/shows");
-  redirect(`/admin/shows?imported=${imported}&skipped=${skipped}`);
+  redirect(
+    `/admin/shows?imported=${imported}&skipped=${skipped}&errors=${errors}&rejected=${rejected}`
+  );
 }

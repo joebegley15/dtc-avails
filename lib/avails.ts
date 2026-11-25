@@ -3,6 +3,8 @@ import { sql } from "./db";
 import { milesBetween } from "./distance";
 import { cityPart } from "./location";
 import type { CurrentUser } from "./session";
+import { cityKey, loadCityCoords } from "./city-coords";
+import { passAllowsShow } from "./pass-level";
 
 // "Today" for show_date >= today. Shows are mostly in Texas, and using the
 // database's own UTC date would hide tonight's shows from about 7 PM Central.
@@ -33,12 +35,16 @@ export type VisibleShow = {
  *     answer them (admins included: an admin submitting avails is a comedian
  *     like any other, so needs the star). For anyone else they are `locked`,
  *     and any answer saved before the show was starred is not returned.
+ *   - a locally passed comic only gets shows whose city is within
+ *     LOCAL_PASS_RADIUS_MILES of their home market, by the coordinates in
+ *     the cities table. A show city or home market without coordinates
+ *     hides the show. Fully passed comics get every show.
  *
  * Venue and capacity are deliberately never selected, so they cannot reach the
  * client.
  */
 export async function loadVisibleShows(user: CurrentUser): Promise<VisibleShow[]> {
-  return (await sql`
+  const shows = (await sql`
     select
       s.id, s.city, s.neighborhood,
       to_char(s.show_date, 'YYYY-MM-DD') as show_date,
@@ -54,6 +60,23 @@ export async function loadVisibleShows(user: CurrentUser): Promise<VisibleShow[]
     where s.show_date >= (now() at time zone ${AVAILS_TIME_ZONE}::text)::date
     order by s.show_date, s.show_time, s.id
   `) as VisibleShow[];
+
+  if (!isLocalPass(user)) return shows;
+
+  const [row] = (await sql`
+    select home_market from users where id = ${user.id}
+  `) as { home_market: string | null }[];
+  const homeMarket = row?.home_market?.trim() || null;
+  if (!homeMarket) return [];
+
+  const coords = await loadCityCoords([homeMarket, ...shows.map((s) => s.city)]);
+  const home = coords.get(cityKey(homeMarket));
+  return shows.filter((s) => passAllowsShow("local", home, coords.get(cityKey(s.city))));
+}
+
+/** Only comics are ever locally passed; anyone else sees every show. */
+export function isLocalPass(user: CurrentUser): boolean {
+  return user.role === "comic" && user.pass_level === "local";
 }
 
 export type AvailsProfile = {

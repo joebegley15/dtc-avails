@@ -17,7 +17,11 @@
     "migrate:help-truck": "node scripts/migrate-help-truck.mjs",
     "migrate:in-town": "node scripts/migrate-in-town.mjs",
     "migrate:nominations": "node scripts/migrate-nominations.mjs",
-    "migrate:show-cities": "npx --yes tsx scripts/migrate-show-cities.ts"
+    "migrate:show-cities": "npx --yes tsx scripts/migrate-show-cities.ts",
+    "migrate:lead-producer": "node scripts/migrate-lead-producer.mjs",
+    "migrate:pass-level": "npx --yes tsx scripts/migrate-pass-level.ts",
+    "migrate:booker": "node scripts/migrate-booker.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
@@ -39,6 +43,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.7"
   }
 }

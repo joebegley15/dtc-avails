@@ -12,6 +12,7 @@ import {
   type UserCsvRow,
   type UserRowPlan,
 } from "@/lib/user-import";
+import { ensureCityCoords } from "@/lib/city-coords";
 
 export type ValidateUsersResult = { rows: UserRowPlan[] } | { error: string };
 
@@ -71,14 +72,14 @@ export async function validateUsers(
 
 /**
  * Validates again on the server, then in one transaction updates existing
- * users (name, home market, all-star only) and inserts new ones with the
+ * users (name, home market, all-star, and a comic's pass level) and inserts new ones with the
  * default password and must_change_password = true. Existing users'
  * passwords and roles are never touched.
  */
 export async function importUsers(
   rows: UserCsvRow[]
 ): Promise<ImportUsersResult> {
-  await requireAdmin();
+  const admin = await requireAdmin();
 
   const result = await planRows(rows);
   if ("error" in result) return result;
@@ -101,16 +102,20 @@ export async function importUsers(
     update users set
       name = ${user.name},
       home_market = coalesce(${user.homeMarket}::text, home_market),
-      is_all_star = coalesce(${user.isAllStar}::boolean, is_all_star)
+      is_all_star = coalesce(${user.isAllStar}::boolean, is_all_star),
+      pass_level = case when role = 'comic'
+        then coalesce(${user.passLevel}::text, pass_level) else pass_level end
     where id = ${id} and role <> 'admin'
     returning id
   `;
   const insertQuery = (user: PlannedUser) => sql`
     insert into users
-      (name, email, password_hash, role, home_market, is_all_star, must_change_password)
+      (name, email, password_hash, role, home_market, is_all_star, must_change_password,
+       pass_level, created_by)
     values
       (${user.name}, ${user.email}, ${defaultHash}, ${user.role},
-       ${user.homeMarket}, ${user.isAllStar ?? false}, true)
+       ${user.homeMarket}, ${user.isAllStar ?? false}, true,
+       ${user.role === "comic" ? (user.passLevel ?? "full") : "full"}, ${admin.id})
     on conflict (email) do nothing
     returning id
   `;
@@ -139,6 +144,11 @@ export async function importUsers(
     addResults[i].length > 0
       ? [{ name: user.name, email: user.email }]
       : []
+  );
+
+  // Local passes measure from home markets.
+  await ensureCityCoords(
+    [...toAdd, ...toUpdate.map((u) => u.user)].flatMap((u) => (u.homeMarket ? [u.homeMarket] : []))
   );
 
   revalidatePath("/admin/users");

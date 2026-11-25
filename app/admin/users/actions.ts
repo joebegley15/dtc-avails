@@ -5,73 +5,24 @@ import bcrypt from "bcryptjs";
 import { sql } from "@/lib/db";
 import { DEFAULT_PASSWORD, requireAdmin } from "@/lib/auth";
 import { buildLink, generateToken } from "@/lib/tokens";
-import type { Role } from "@/lib/session";
+import type { Role } from "@/lib/roles";
 import { matchCity } from "@/lib/cities";
+import { isPassLevel, type PassLevel } from "@/lib/pass-level";
+import { createSingleUser, passwordError, type CreateUserState } from "@/lib/user-create";
+import { ensureCityCoords } from "@/lib/city-coords";
 
-const MIN_PASSWORD_LENGTH = 6;
-// bcrypt only uses the first 72 bytes; reject longer input instead of
-// silently truncating it.
-const MAX_PASSWORD_BYTES = 72;
+export type AddUserState = CreateUserState;
 
-function passwordError(password: string): string | null {
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    return `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
-  }
-  if (Buffer.byteLength(password) > MAX_PASSWORD_BYTES) {
-    return `Password must be at most ${MAX_PASSWORD_BYTES} bytes.`;
-  }
-  return null;
-}
-
-export type AddUserState = { error?: string; success?: string };
-
-const ROLES: Role[] = ["producer", "comic"];
-
+/** The admin's single "Add user": any role except admin. */
 export async function createUser(
   _prevState: AddUserState,
   formData: FormData
 ): Promise<AddUserState> {
-  await requireAdmin();
+  const admin = await requireAdmin();
 
-  const name = String(formData.get("name") ?? "").trim();
-  const email = String(formData.get("email") ?? "")
-    .trim()
-    .toLowerCase();
-  const password = String(formData.get("password") ?? "");
-  const role = String(formData.get("role") ?? "") as Role;
-  const homeMarket = String(formData.get("homeMarket") ?? "").trim();
-  const isAllStar = formData.get("isAllStar") === "on";
-
-  if (!name || !email || !password || !role) {
-    return { error: "Name, email, password, and role are required." };
-  }
-  const pwError = passwordError(password);
-  if (pwError) {
-    return { error: pwError };
-  }
-  if (!ROLES.includes(role)) {
-    return { error: "Invalid role." };
-  }
-  if (homeMarket && !matchCity(homeMarket)) {
-    return { error: "Enter a US city, like Austin, TX." };
-  }
-
-  const passwordHash = await bcrypt.hash(password, 10);
-
-  try {
-    await sql`
-      insert into users (name, email, password_hash, role, home_market, is_all_star)
-      values (${name}, ${email}, ${passwordHash}, ${role}, ${matchCity(homeMarket)}, ${isAllStar})
-    `;
-  } catch (err) {
-    if (err instanceof Error && "code" in err && err.code === "23505") {
-      return { error: "That email is already in use." };
-    }
-    throw err;
-  }
-
-  revalidatePath("/admin/users");
-  return { success: `Added ${name}.` };
+  const result = await createSingleUser(admin, formData);
+  if (result.success) revalidatePath("/admin/users");
+  return result;
 }
 
 export type ResetPasswordState = { error?: string; success?: string };
@@ -255,6 +206,33 @@ export async function setHomeMarket(
     update users set home_market = ${market} where id = ${userId} returning id
   `;
   if (updated.length === 0) return { ok: false, error: "User not found." };
+  // Local passes measure from it.
+  if (market) await ensureCityCoords([market]);
+
+  revalidatePath("/admin/users");
+  return { ok: true };
+}
+
+/**
+ * Sets a comic's pass level: "full" (any show in the district) or "local"
+ * (only shows near their home market).
+ */
+export async function setPassLevel(
+  userId: number,
+  passLevel: PassLevel
+): Promise<UpdateUserResult> {
+  await requireAdmin();
+
+  if (!validUserId(userId) || !isPassLevel(passLevel)) {
+    return { ok: false, error: "Invalid request." };
+  }
+
+  const updated = await sql`
+    update users set pass_level = ${passLevel}
+    where id = ${userId} and role = 'comic'
+    returning id
+  `;
+  if (updated.length === 0) return { ok: false, error: "Only comics have a pass level." };
 
   revalidatePath("/admin/users");
   return { ok: true };
@@ -324,7 +302,9 @@ export type EditUserInput = {
 };
 
 const EDIT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const EDITABLE_ROLES: Role[] = ["producer", "comic"];
+// Promoting a producer to Lead Producer (and back) happens here. Nobody is
+// made an admin here.
+const EDITABLE_ROLES: Role[] = ["comic", "producer", "lead_producer", "booker"];
 
 /**
  * Edits a user's name, email, role and truck answer. Admin rows keep their

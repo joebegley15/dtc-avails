@@ -3,7 +3,7 @@ import { countPendingNominations } from "@/lib/nominations";
 import { NavTabs, type NavTab } from "./nav-tabs";
 
 /**
- * Admins and producers get both sides of the app: the shows they produce, and
+ * Admins and (Lead) Producers get both sides of the app: the shows they produce, and
  * their own avails as a comedian. Comics only ever see /avails, so no tabs.
  * `pendingApprovals` is the count shown on the admin's Approvals tab.
  */
@@ -14,12 +14,21 @@ function tabsFor(user: CurrentUser, pendingApprovals = 0): NavTab[] {
         { href: "/admin/shows", label: "Shows" },
         { href: "/admin/bulk-upload", label: "Bulk upload" },
         { href: "/admin/users", label: "Users" },
+        { href: "/admin/cities", label: "Cities" },
         {
           href: "/admin/approvals",
           label: pendingApprovals > 0 ? `Approvals (${pendingApprovals})` : "Approvals",
         },
         // Preselects the admin's own shows; the picker can still show all.
         { href: `/producer?producer=${user.id}`, label: "Producer" },
+        { href: "/booker", label: "Booker" },
+        { href: "/avails", label: "Comedian" },
+      ];
+    case "lead_producer":
+      return [
+        { href: "/producer", label: "Producer" },
+        { href: "/producer/users", label: "Create user" },
+        { href: "/producer/nominate", label: "Nominate a comic" },
         { href: "/avails", label: "Comedian" },
       ];
     case "producer":
@@ -27,6 +36,12 @@ function tabsFor(user: CurrentUser, pendingApprovals = 0): NavTab[] {
         { href: "/producer", label: "Producer" },
         { href: "/producer/nominate", label: "Nominate a comic" },
         { href: "/avails", label: "Comedian" },
+      ];
+    // Read-only show data for planning runs. No avails of their own.
+    case "booker":
+      return [
+        { href: "/booker", label: "Shows" },
+        { href: "/booker/runs", label: "Run planner" },
       ];
     case "comic":
       return [];

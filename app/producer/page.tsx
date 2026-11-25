@@ -1,6 +1,6 @@
-import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { requireProducer } from "@/lib/auth";
 import { sql } from "@/lib/db";
+import { PRODUCING_ROLES_SQL } from "@/lib/roles";
 import { COUNTED_AVAIL, isTravelShow, offersInTown } from "@/lib/avails";
 import {
   ProducerShowsView,
@@ -56,10 +56,7 @@ const SHOW_COLUMNS = `
 export default async function ProducerPage({
   searchParams,
 }: PageProps<"/producer">) {
-  const user = await requireUser();
-  if (user.role !== "producer" && user.role !== "admin") {
-    redirect("/login");
-  }
+  const user = await requireProducer();
   const isAdmin = user.role === "admin";
 
   // ?producer=<id> preselects a producer in the admin view. Ignored otherwise.
@@ -98,7 +95,7 @@ export default async function ProducerPage({
 
   const [{ total: totalComics }] = (await sql`
     select count(*)::int as total from users u
-    where role in ('comic', 'producer')
+    where role in ('comic', 'producer', 'lead_producer')
       or exists (select 1 from avails a where a.user_id = u.id)
   `) as { total: number }[];
 
@@ -191,7 +188,7 @@ export default async function ProducerPage({
 
   const producers: ProducerOption[] = isAdmin
     ? ((await sql`
-        select id, name from users where role in ('producer', 'admin') order by name
+        select id, name from users where role in ${sql.unsafe(PRODUCING_ROLES_SQL)} order by name
       `) as ProducerOption[])
     : [];
 

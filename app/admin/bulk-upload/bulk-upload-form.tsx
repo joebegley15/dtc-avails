@@ -1,6 +1,6 @@
 "use client";
 
-import Papa from "papaparse";
+import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { formatShowDate, formatShowTime } from "@/lib/format";
 import {
@@ -8,6 +8,7 @@ import {
   splitShowtime,
   type ProducerOption,
 } from "@/lib/show-parsing";
+import { parseShowCsv } from "@/lib/show-csv";
 import { ProducerPicker } from "../shows/producer-picker";
 import {
   importShows,
@@ -17,28 +18,8 @@ import {
   type ProducerPicks,
 } from "./actions";
 
-const REQUIRED_HEADERS = ["show_title", "showtime", "producers", "venue"];
-const KNOWN_HEADERS = [
-  "show_title",
-  "showtime",
-  "producers",
-  "venue",
-  "capacity",
-  "all_star",
-] as const;
-
-// The export's "Show Title", and other spellings people use for the all-star column.
-const HEADER_ALIASES: Record<string, string> = {
-  "show title": "show_title",
-  "all-star": "all_star",
-  "all star": "all_star",
-  allstar: "all_star",
-  is_all_star: "all_star",
-  star: "all_star",
-};
-
 // Only rows that would actually be imported can be checked or unchecked.
-const isSelectable = (r: PreviewRow) => r.show !== null && !r.duplicate;
+const isSelectable = (r: PreviewRow) => r.show !== null && !r.duplicate && !r.rejected;
 
 export function BulkUploadForm({ producers }: { producers: ProducerOption[] }) {
   const [csvRows, setCsvRows] = useState<CsvRow[] | null>(null);
@@ -50,6 +31,7 @@ export function BulkUploadForm({ producers }: { producers: ProducerOption[] }) {
   // Only the latest validation may update the preview.
   const validationSeq = useRef(0);
   const [error, setError] = useState<string | null>(null);
+  const [missingCoords, setMissingCoords] = useState<string[]>([]);
   // Changing the key remounts the file input, which clears its selection.
   const [inputKey, setInputKey] = useState(0);
   const [pending, startTransition] = useTransition();
@@ -60,46 +42,32 @@ export function BulkUploadForm({ producers }: { producers: ProducerOption[] }) {
     setExcluded(new Set());
     setPicks({});
     setError(null);
+    setMissingCoords([]);
     setInputKey((k) => k + 1);
   }
 
-  function handleFile(file: File) {
+  async function handleFile(file: File) {
     setCsvRows(null);
     setPreview(null);
     setExcluded(new Set());
     setPicks({});
     setError(null);
+    setMissingCoords([]);
 
-    Papa.parse<Record<string, string>>(file, {
-      header: true,
-      skipEmptyLines: "greedy",
-      transformHeader: (h) => {
-        const key = h.trim().toLowerCase();
-        return HEADER_ALIASES[key] ?? key;
-      },
-      complete: (results) => {
-        const headers = results.meta.fields ?? [];
-        const missing = REQUIRED_HEADERS.filter((h) => !headers.includes(h));
-        if (missing.length > 0) {
-          const names = missing.map((h) => h.replace("_", " "));
-          setError(`The CSV is missing required column(s): ${names.join(", ")}.`);
-          return;
-        }
-        if (results.data.length === 0) {
-          setError("The file has no data rows.");
-          return;
-        }
-
-        const rows = results.data.map((r) => {
-          const row = {} as CsvRow;
-          for (const h of KNOWN_HEADERS) row[h] = String(r[h] ?? "");
-          return row;
-        });
-        setCsvRows(rows);
-        revalidate(rows, {});
-      },
-      error: (err) => setError(`Couldn't read that file: ${err.message}`),
-    });
+    let text: string;
+    try {
+      text = await file.text();
+    } catch (err) {
+      setError(`Couldn't read that file: ${err instanceof Error ? err.message : String(err)}`);
+      return;
+    }
+    const parsed = parseShowCsv(text);
+    if (!parsed.ok) {
+      setError(parsed.error);
+      return;
+    }
+    setCsvRows(parsed.rows);
+    revalidate(parsed.rows, {});
   }
 
   function revalidate(rows: CsvRow[], nextPicks: ProducerPicks) {
@@ -111,6 +79,7 @@ export function BulkUploadForm({ producers }: { producers: ProducerOption[] }) {
         setError(result.error);
       } else {
         setPreview(result.rows);
+        setMissingCoords(result.citiesMissingCoords);
       }
     });
   }
@@ -155,6 +124,7 @@ export function BulkUploadForm({ producers }: { producers: ProducerOption[] }) {
   const ready = selectable.length;
   const errorCount = preview?.filter((r) => r.errors.length > 0).length ?? 0;
   const duplicateCount = preview?.filter((r) => r.duplicate).length ?? 0;
+  const rejectedCount = preview?.filter((r) => r.rejected).length ?? 0;
 
   return (
     <div className="mt-6">
@@ -203,12 +173,24 @@ export function BulkUploadForm({ producers }: { producers: ProducerOption[] }) {
         <>
           <p className="mt-6 text-sm font-medium text-zinc-800">
             {ready} ready, {errorCount} error{errorCount === 1 ? "" : "s"},{" "}
-            {duplicateCount} duplicate{duplicateCount === 1 ? "" : "s"}
+            {duplicateCount} duplicate{duplicateCount === 1 ? "" : "s"},{" "}
+            {rejectedCount} skipped as Rejected
             <span className="font-normal text-zinc-500">
               {" "}
               · {selectedCount} selected to import
             </span>
           </p>
+
+          {missingCoords.length > 0 && (
+            <p className="mt-2 rounded-md border border-amber-600/30 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              No coordinates for {missingCoords.join("; ")}. Locally passed
+              comics won&apos;t see shows there until you add them on{" "}
+              <Link href="/admin/cities" className="underline">
+                Cities
+              </Link>
+              .
+            </p>
+          )}
 
           <table className="mt-2 w-full text-left text-sm">
             <thead>
@@ -284,7 +266,9 @@ function PreviewTableRow({
   const selectable = isSelectable(row);
   const unchecked = selectable && !selected;
 
-  const rowClass = hasErrors
+  const rowClass = row.rejected
+    ? "bg-zinc-100 align-top text-zinc-400"
+    : hasErrors
     ? "bg-red-50 align-top"
     : row.duplicate
       ? "bg-zinc-100 align-top text-zinc-400"
@@ -311,7 +295,9 @@ function PreviewTableRow({
       </td>
       <td className="px-2 py-2">{row.row}</td>
       <td className="px-2 py-2">
-        {hasErrors ? (
+        {row.rejected ? (
+          <span>Show Status is Rejected, will skip</span>
+        ) : hasErrors ? (
           <ul className="list-disc pl-4 text-red-700">
             {row.errors.map((e) => (
               <li key={e}>{e}</li>

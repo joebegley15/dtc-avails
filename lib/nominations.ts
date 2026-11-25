@@ -180,16 +180,18 @@ export async function claimNominationAndCreateUser(
       where invite_token = ${token}
         and status = 'approved'
         and token_expires_at > now()
-      returning id
+      returning id, nominated_by
     )
-    insert into users (id, name, email, password_hash, role, home_market)
+    insert into users (id, name, email, password_hash, role, home_market, created_by)
     select
       ${userId}::int,
       ${user.name}::text,
       ${user.email}::text,
       ${user.passwordHash}::text,
       'comic',
-      ${user.homeMarket}::text
+      ${user.homeMarket}::text,
+      -- The producer who nominated them is who added them.
+      claimed.nominated_by
     from claimed
     returning id
   `) as { id: number }[];

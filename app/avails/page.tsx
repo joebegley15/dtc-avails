@@ -1,6 +1,7 @@
-import { requireUser } from "@/lib/auth";
+import { requireComedian } from "@/lib/auth";
 import { AppHeader, hasTabs } from "@/components/app-header";
 import {
+  isLocalPass,
   isTravelShow,
   loadAvailsProfile,
   offersInTown,
@@ -8,11 +9,14 @@ import {
 } from "@/lib/avails";
 import { matchCity } from "@/lib/cities";
 import { formatCity } from "@/lib/markets";
+import { LOCAL_PASS_RADIUS_MILES } from "@/lib/pass-level";
 import { AvailsForm, type AvailsShow } from "./avails-form";
 import { HomeMarketEditor } from "./home-market-editor";
 
 export default async function AvailsPage() {
-  const user = await requireUser();
+  // Bookers are sent to /booker: they don't submit avails.
+  const user = await requireComedian();
+  const localPass = isLocalPass(user);
 
   const [visible, profile] = await Promise.all([
     loadVisibleShows(user),
@@ -66,16 +70,42 @@ export default async function AvailsPage() {
           <h1 className="text-lg font-semibold text-zinc-950">
             Avails for {user.name}
           </h1>
-          <HomeMarketEditor
-            // Remount after a save so the picker starts from the new value.
-            key={profile.homeMarket ?? ""}
-            homeMarket={profile.homeMarket}
-            selectValue={
-              profile.homeMarket
-                ? (matchCity(profile.homeMarket) ?? profile.homeMarket)
-                : ""
-            }
-          />
+          {localPass ? (
+            <p className="mt-1 text-sm text-zinc-600">
+              Home market:{" "}
+              <span className="font-medium text-zinc-950">
+                {profile.homeMarket ?? "not set"}
+              </span>
+            </p>
+          ) : (
+            <HomeMarketEditor
+              // Remount after a save so the picker starts from the new value.
+              key={profile.homeMarket ?? ""}
+              homeMarket={profile.homeMarket}
+              selectValue={
+                profile.homeMarket
+                  ? (matchCity(profile.homeMarket) ?? profile.homeMarket)
+                  : ""
+              }
+            />
+          )}
+          {localPass && (
+            <p className="mt-3 rounded-md border border-[#1F3A5F]/20 bg-[#1F3A5F]/5 px-3 py-2 text-sm text-[#1F3A5F]">
+              {profile.homeMarket ? (
+                <>
+                  You&rsquo;re locally passed, so you&rsquo;ll only see shows
+                  within {LOCAL_PASS_RADIUS_MILES} miles of {profile.homeMarket}.
+                  Ask an admin if your home market needs to change.
+                </>
+              ) : (
+                <>
+                  You&rsquo;re locally passed, so you&rsquo;ll see shows within{" "}
+                  {LOCAL_PASS_RADIUS_MILES} miles of your home market. Ask an
+                  admin to set your home market.
+                </>
+              )}
+            </p>
+          )}
           <p className="mt-3 rounded-md bg-zinc-100 px-3 py-2 text-sm text-zinc-700">
             An important note: Only submit for dates you think you can make.
             And remember, submitting helps us sort through a big list of comics,

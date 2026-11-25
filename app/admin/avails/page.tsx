@@ -21,7 +21,7 @@ export default async function AdminAvailsPage() {
 
   const comics = (await sql`
     select id, name, email from users u
-    where role in ('comic', 'producer')
+    where role in ('comic', 'producer', 'lead_producer')
       or exists (select 1 from avails a where a.user_id = u.id)
     order by name
   `) as ComicRow[];

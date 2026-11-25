@@ -80,15 +80,17 @@ export async function claimInviteAndCreateUser(
     with claimed as (
       update invites set used_at = now()
       where id = ${inviteId} and used_at is null
-      returning id
+      returning id, created_by
     )
-    insert into users (name, email, password_hash, role, home_market)
+    insert into users (name, email, password_hash, role, home_market, created_by)
     select
       ${user.name}::text,
       ${user.email}::text,
       ${user.passwordHash}::text,
       ${user.role}::text,
-      ${user.homeMarket}::text
+      ${user.homeMarket}::text,
+      -- Whoever made the invite added this account.
+      claimed.created_by
     from claimed
     returning id
   `) as { id: number }[];

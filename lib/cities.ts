@@ -14,6 +14,9 @@ type City = {
   size: number;
   /** The zip nearest the middle of the city's zips. */
   zip: string;
+  /** The middle of the city's zips. */
+  latitude: number;
+  longitude: number;
 };
 
 /**
@@ -81,12 +84,23 @@ function cities() {
       state,
       size: zips.length,
       zip: middle.zip,
+      latitude: lat,
+      longitude: lon,
     });
   }
   for (const { name, state, zip } of EXTRA_CITIES) {
     const key = cityKey(name);
     // Sized like a mid-size suburb, since they have no zip count of their own.
-    byKey.set(`${key}|${state}`, { label: `${name}, ${state}`, key, state, size: 5, zip });
+    const at = zipcodes.lookup(zip);
+    byKey.set(`${key}|${state}`, {
+      label: `${name}, ${state}`,
+      key,
+      state,
+      size: 5,
+      zip,
+      latitude: at?.latitude ?? 0,
+      longitude: at?.longitude ?? 0,
+    });
   }
 
   index = { byKey, all: [...byKey.values()] };
@@ -133,6 +147,20 @@ export function matchCity(input: string): string | null {
 /** The zip distance checks measure a "City, ST" location from, or null. */
 export function cityZip(location: string): string | null {
   return findCity(location)?.zip ?? null;
+}
+
+/**
+ * Where a "City, ST" location is, from the bundled zip data (no network
+ * call), or null when it isn't a known US city. Used to fill the cities
+ * table; request-time distance checks for local passes read that table.
+ */
+export function cityCoordinates(
+  location: string
+): { label: string; latitude: number; longitude: number } | null {
+  const city = findCity(location);
+  return city
+    ? { label: city.label, latitude: city.latitude, longitude: city.longitude }
+    : null;
 }
 
 /**

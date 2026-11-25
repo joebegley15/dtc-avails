@@ -16,6 +16,7 @@ import {
   loadProducerOptions,
   updateShowQueries,
 } from "@/lib/shows";
+import { ensureCityCoords } from "@/lib/city-coords";
 
 export type ShowFormValues = {
   city: string;
@@ -77,6 +78,8 @@ export async function createShow(
     show_id: number;
   }[];
   if (inserted.length === 0) return { ok: false, errors: [DUPLICATE_ERROR] };
+  // So the local-pass distance check knows where the show is.
+  await ensureCityCoords([validated.show.city]);
 
   revalidatePath("/admin/shows");
   return { ok: true };
@@ -104,6 +107,7 @@ export async function updateShow(
   }
 
   await sql.transaction(updateShowQueries(id, show));
+  await ensureCityCoords([show.city]);
 
   revalidatePath("/admin/shows");
   return { ok: true };

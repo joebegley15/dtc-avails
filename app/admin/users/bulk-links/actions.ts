@@ -11,6 +11,7 @@ import {
   type LinkCsvRow,
   type LinkRowPlan,
 } from "@/lib/link-users";
+import { ensureCityCoords } from "@/lib/city-coords";
 
 export type ValidateNamesResult = { rows: LinkRowPlan[] } | { error: string };
 
@@ -75,7 +76,7 @@ type InsertedRow = { id: number; name: string; access_token: string };
 export async function createLinkUsers(
   rows: LinkCsvRow[]
 ): Promise<CreateLinkUsersResult> {
-  await requireAdmin();
+  const admin = await requireAdmin();
 
   const result = await planRows(rows);
   if ("error" in result) return result;
@@ -95,9 +96,9 @@ export async function createLinkUsers(
   const insertQueries = toAdd.map(
     (user, i) => sql`
       insert into users
-        (name, role, home_market, is_all_star, access_token, token_created_at, email, password_hash, must_change_password)
+        (name, role, home_market, is_all_star, access_token, token_created_at, email, password_hash, must_change_password, created_by)
       values
-        (${user.name}, 'comic', ${user.homeMarket}, ${user.allStar}, ${newTokens[i]}, now(), null, null, false)
+        (${user.name}, 'comic', ${user.homeMarket}, ${user.allStar}, ${newTokens[i]}, now(), null, null, false, ${admin.id})
       returning id, name, access_token
     `
   );
@@ -145,6 +146,8 @@ export async function createLinkUsers(
     const token = backfilledTokenById.get(id) ?? user?.access_token ?? null;
     return user && token ? [{ name: user.name, link: buildLink(token) }] : [];
   });
+
+  await ensureCityCoords(toAdd.map((u) => u.homeMarket));
 
   const created = createdLinks.length;
   const existing = existingLinks.length;

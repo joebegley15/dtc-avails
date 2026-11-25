@@ -2,6 +2,8 @@
 // callers pass in the existing users.
 import { matchCity } from "./cities";
 import { duplicateNameWarnings, type NamedPerson } from "./name-duplicates";
+import { parsePassLevel, type PassLevel } from "./pass-level";
+import type { Role } from "./roles";
 
 export const USER_CSV_FIELDS = [
   "name",
@@ -9,7 +11,30 @@ export const USER_CSV_FIELDS = [
   "role",
   "home_market",
   "is_all_star",
+  "pass_level",
 ] as const;
+
+// Spreadsheet headers people actually type.
+const HEADER_ALIASES: Record<string, string> = {
+  "home market": "home_market",
+  homemarket: "home_market",
+  market: "home_market",
+  "all-star": "is_all_star",
+  "all star": "is_all_star",
+  allstar: "is_all_star",
+  all_star: "is_all_star",
+  "is all star": "is_all_star",
+  star: "is_all_star",
+  "pass level": "pass_level",
+  passlevel: "pass_level",
+  pass: "pass_level",
+};
+
+/** Header matching ignores case and surrounding whitespace. */
+export function normalizeUserHeader(header: string): string {
+  const h = header.trim().toLowerCase();
+  return HEADER_ALIASES[h] ?? h;
+}
 
 export type UserCsvRow = Record<(typeof USER_CSV_FIELDS)[number], string>;
 
@@ -18,10 +43,16 @@ export type ExistingUser = {
   name: string;
   // Link-based comics have no email; they can never be matched by one here.
   email: string | null;
-  role: "admin" | "producer" | "comic";
+  role: Role;
 };
 
-export type ImportRole = "comic" | "producer";
+/**
+ * Roles the import can create. Bookers are added by admins only, and this
+ * import is admin-only. Lead Producers are promoted from producers on
+ * /admin/users, and admins are added one at a time.
+ */
+export type ImportRole = "comic" | "producer" | "booker";
+const IMPORT_ROLES: readonly string[] = ["comic", "producer", "booker"];
 
 export type PlannedUser = {
   name: string;
@@ -31,6 +62,11 @@ export type PlannedUser = {
   homeMarket: string | null;
   /** null = leave an existing user's value alone (blank cell). */
   isAllStar: boolean | null;
+  /**
+   * Comics only. null = blank cell: new comics start "full", existing
+   * users keep theirs.
+   */
+  passLevel: PassLevel | null;
 };
 
 export type UserRowPlan = {
@@ -90,6 +126,7 @@ export function planUserImport(
     const name = raw.name.trim();
     const email = raw.email.trim().toLowerCase();
     const roleRaw = raw.role.trim().toLowerCase();
+    const passLevel = parsePassLevel(raw.pass_level);
     const homeMarket = raw.home_market.trim();
     const allStar = parseAllStar(raw.is_all_star);
 
@@ -103,8 +140,10 @@ export function planUserImport(
     let role: ImportRole = "comic";
     if (roleRaw === "admin") {
       errors.push(ADMIN_ROW_ERROR);
-    } else if (roleRaw === "comic" || roleRaw === "producer") {
-      role = roleRaw;
+    } else if (IMPORT_ROLES.includes(roleRaw)) {
+      role = roleRaw as ImportRole;
+    } else if (roleRaw === "lead_producer" || roleRaw === "lead producer") {
+      errors.push("Make Lead Producers by editing a producer in /admin/users.");
     } else if (roleRaw !== "") {
       errors.push(`Bad role: ${raw.role.trim()}`);
     }
@@ -115,6 +154,11 @@ export function planUserImport(
     }
 
     if (allStar === "bad") errors.push(`Bad all-star value: ${raw.is_all_star.trim()}`);
+    if (passLevel === "bad") {
+      errors.push(`Bad pass level: ${raw.pass_level.trim()} (use full or local)`);
+    } else if (passLevel !== null && roleRaw !== "" && role !== "comic") {
+      errors.push("Only comics have a pass level");
+    }
 
     let match: ExistingUser | undefined;
     if (email && EMAIL_RE.test(email)) {
@@ -147,6 +191,7 @@ export function planUserImport(
       role,
       homeMarket: market,
       isAllStar: allStar === "bad" ? null : allStar,
+      passLevel: passLevel === "bad" ? null : passLevel,
     };
     const warnings = match
       ? []

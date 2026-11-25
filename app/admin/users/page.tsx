@@ -2,24 +2,34 @@ import Link from "next/link";
 import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { buildLink } from "@/lib/tokens";
-import { AddUserForm } from "./add-user-form";
+import { CreateUserForm } from "@/components/create-user-form";
+import { createUser } from "./actions";
 import { DeleteUserButton } from "./delete-user-button";
 import { EditUserButton } from "./edit-user-button";
 import { LinkCell } from "./link-cell";
 import { ResetPasswordButton } from "./reset-password-button";
 import { ResetToDefaultButton } from "./reset-to-default-button";
 import { matchCity } from "@/lib/cities";
-import { AllStarToggle, HomeMarketCell, InviteLinkButton } from "./user-cells";
+import { creatableRoles, roleLabel, ROLES, type Role } from "@/lib/roles";
+import type { PassLevel } from "@/lib/pass-level";
+import {
+  AllStarToggle,
+  HomeMarketCell,
+  InviteLinkButton,
+  PassLevelSelect,
+} from "./user-cells";
 import { OTHER_MARKET, UserFilters } from "./user-filters";
 
-const ROLES = ["admin", "producer", "comic"];
+const ROLE_FILTERS: string[] = [...ROLES];
 const STATUSES = ["activated", "not-activated"];
 
 type UserRow = {
   id: number;
   name: string;
   email: string | null;
-  role: "admin" | "producer" | "comic";
+  role: Role;
+  pass_level: PassLevel;
+  created_by_name: string | null;
   home_market: string | null;
   is_all_star: boolean;
   has_truck: boolean | null;
@@ -41,16 +51,19 @@ export default async function AdminUsersPage({
   const statusParam = typeof params.status === "string" ? params.status : "";
   const status = STATUSES.includes(statusParam) ? statusParam : "";
   const marketParam = typeof params.market === "string" ? params.market : "";
-  const role = ROLES.includes(roleParam) ? roleParam : "";
+  const role = ROLE_FILTERS.includes(roleParam) ? roleParam : "";
   const marketMatch = marketParam === OTHER_MARKET ? OTHER_MARKET : matchCity(marketParam);
 
   const allUsers = (await sql`
-    select id, name, email, role, home_market, is_all_star, has_truck, access_token,
+    select u.id, u.name, u.email, u.role, u.pass_level, u.home_market, u.is_all_star,
+      u.has_truck, u.access_token,
+      creator.name as created_by_name,
       -- Has chosen their own password.
-      not (must_change_password or password_hash is null) as activated
-    from users
+      not (u.must_change_password or u.password_hash is null) as activated
+    from users u
+    left join users creator on creator.id = u.created_by
     -- Names are "First Last", so this is by first name.
-    order by lower(name), id
+    order by lower(u.name), u.id
   `) as UserRow[];
 
   // Each user's market through matchCity, so values saved in other forms
@@ -92,7 +105,7 @@ export default async function AdminUsersPage({
         <div>
           <h1 className="text-lg font-semibold text-zinc-950">Users</h1>
           <p className="mt-1 text-sm text-zinc-600">
-            Add producers, comics, and admins here.
+            Add comics, producers, Lead Producers, and Bookers here.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -117,7 +130,11 @@ export default async function AdminUsersPage({
         </div>
       </div>
 
-      <AddUserForm />
+      <CreateUserForm
+        action={createUser}
+        roles={creatableRoles("admin")}
+        allowAllStar
+      />
 
       <UserFilters
         key={`${role}|${market}|${status}`}
@@ -138,6 +155,8 @@ export default async function AdminUsersPage({
               <th className="py-2 pr-4">Name</th>
               <th className="py-2 pr-4">Email</th>
               <th className="py-2 pr-4">Role</th>
+              <th className="py-2 pr-4">Pass</th>
+              <th className="py-2 pr-4">Added by</th>
               <th className="py-2 pr-4">Account</th>
               <th className="py-2 pr-4">Home market</th>
               <th className="py-2 pr-4">All-star</th>
@@ -151,7 +170,15 @@ export default async function AdminUsersPage({
               <tr key={u.id}>
                 <td className="py-2 pr-4 font-medium text-zinc-950">{u.name}</td>
                 <td className="break-all py-2 pr-4 text-zinc-600">{u.email ?? "—"}</td>
-                <td className="py-2 pr-4 capitalize text-zinc-600">{u.role}</td>
+                <td className="whitespace-nowrap py-2 pr-4 text-zinc-600">{roleLabel(u.role)}</td>
+                <td className="py-2 pr-4">
+                  {u.role === "comic" ? (
+                    <PassLevelSelect userId={u.id} passLevel={u.pass_level} />
+                  ) : (
+                    <span className="text-zinc-400">—</span>
+                  )}
+                </td>
+                <td className="py-2 pr-4 text-zinc-600">{u.created_by_name ?? "—"}</td>
                 <td className="whitespace-nowrap py-2 pr-4">
                   {u.activated ? (
                     <span className="text-xs font-medium text-emerald-700">Activated</span>
@@ -204,7 +231,7 @@ export default async function AdminUsersPage({
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={9} className="py-4 text-center text-zinc-500">
+                <td colSpan={11} className="py-4 text-center text-zinc-500">
                   {allUsers.length === 0 ? "No users yet." : "No users match these filters."}
                 </td>
               </tr>

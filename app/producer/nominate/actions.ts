@@ -1,9 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { sql } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requireProducer } from "@/lib/auth";
 import { NOMINATION_NOTE_MAX, normalizeHandle } from "@/lib/nomination-message";
 
 export type NominateState = {
@@ -24,10 +23,7 @@ export async function nominateComic(
   _prevState: NominateState,
   formData: FormData
 ): Promise<NominateState> {
-  const user = await requireUser();
-  if (user.role !== "producer" && user.role !== "admin") {
-    redirect("/login");
-  }
+  const user = await requireProducer();
 
   const name = String(formData.get("name") ?? "").trim().replace(/\s+/g, " ");
   const handleInput = String(formData.get("handle") ?? "").trim();

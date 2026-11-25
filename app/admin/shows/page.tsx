@@ -18,6 +18,8 @@ export default async function AdminShowsPage({
   const params = await searchParams;
   const imported = toCount(params.imported);
   const skipped = toCount(params.skipped);
+  const errors = toCount(params.errors) ?? 0;
+  const rejected = toCount(params.rejected) ?? 0;
 
   const [shows, producers, availsCount] = await Promise.all([
     sql`
@@ -46,7 +48,12 @@ export default async function AdminShowsPage({
       <h1 className="text-lg font-semibold text-zinc-950">Shows</h1>
 
       {imported !== null && skipped !== null && (
-        <ImportBanner imported={imported} skipped={skipped} />
+        <ImportBanner
+          imported={imported}
+          skipped={skipped}
+          errors={errors}
+          rejected={rejected}
+        />
       )}
 
       <ShowsManager

@@ -2,6 +2,7 @@
 // access: callers pass in the existing users to match against.
 import { matchCity } from "./cities";
 import { duplicateNameWarnings, type NamedPerson } from "./name-duplicates";
+import type { Role } from "./roles";
 
 export const LINK_CSV_FIELDS = ["name", "home_market", "all_star"] as const;
 
@@ -10,7 +11,7 @@ export type LinkCsvRow = Record<(typeof LINK_CSV_FIELDS)[number], string>;
 export type ExistingLinkUser = {
   id: number;
   name: string;
-  role: "admin" | "producer" | "comic";
+  role: Role;
   access_token: string | null;
 };
 

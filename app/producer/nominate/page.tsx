@@ -1,14 +1,10 @@
-import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { requireProducer } from "@/lib/auth";
 import { listMyNominations } from "@/lib/nominations";
 import { MyNominations } from "./my-nominations";
 import { NominateForm } from "./nominate-form";
 
 export default async function NominatePage() {
-  const user = await requireUser();
-  if (user.role !== "producer" && user.role !== "admin") {
-    redirect("/login");
-  }
+  const user = await requireProducer();
 
   // Only ever this producer's own nominations, admins included.
   const nominations = await listMyNominations(user.id);

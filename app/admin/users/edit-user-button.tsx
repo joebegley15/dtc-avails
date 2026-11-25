@@ -1,11 +1,14 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import type { Role } from "@/lib/session";
+import { roleLabel, type Role } from "@/lib/roles";
 import { updateUser } from "./actions";
 
 const inputClass =
   "rounded-md border border-black/10 bg-white px-3 py-2 text-sm text-zinc-950 outline-none focus:border-[#DA1717]";
+
+// Promote a producer to Lead Producer or demote them back here.
+const EDITABLE_ROLES: Role[] = ["comic", "producer", "lead_producer", "booker"];
 
 export type EditableUser = {
   id: number;
@@ -99,8 +102,11 @@ export function EditUserButton({ user }: { user: EditableUser }) {
                 onChange={(e) => setRole(e.target.value as Role)}
                 className={inputClass}
               >
-                <option value="comic">Comic</option>
-                <option value="producer">Producer</option>
+                {EDITABLE_ROLES.map((r) => (
+                  <option key={r} value={r}>
+                    {roleLabel(r)}
+                  </option>
+                ))}
               </select>
             )}
           </label>

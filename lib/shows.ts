@@ -1,12 +1,13 @@
 // Server-side database helpers for shows. Import from server code only.
 import { sql } from "./db";
+import { PRODUCING_ROLES_SQL } from "./roles";
 import { showKey, type ParsedShow, type ProducerOption } from "./show-parsing";
 
-/** Users a show can be attached to: role producer or admin. */
+/** Users a show can be attached to: producers, Lead Producers, and admins. */
 export async function loadProducerOptions(): Promise<ProducerOption[]> {
   return (await sql`
     select id, name from users
-    where role in ('producer', 'admin')
+    where role in ${sql.unsafe(PRODUCING_ROLES_SQL)}
     order by name
   `) as ProducerOption[];
 }

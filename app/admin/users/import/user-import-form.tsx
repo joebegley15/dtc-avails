@@ -2,7 +2,11 @@
 
 import Papa from "papaparse";
 import { useState, useTransition } from "react";
-import type { UserCsvRow, UserRowPlan } from "@/lib/user-import";
+import {
+  normalizeUserHeader,
+  type UserCsvRow,
+  type UserRowPlan,
+} from "@/lib/user-import";
 import {
   importUsers,
   validateUsers,
@@ -17,25 +21,8 @@ const KNOWN_HEADERS = [
   "role",
   "home_market",
   "is_all_star",
+  "pass_level",
 ] as const;
-
-// Spreadsheet headers people actually type.
-const HEADER_ALIASES: Record<string, string> = {
-  "home market": "home_market",
-  homemarket: "home_market",
-  market: "home_market",
-  "all-star": "is_all_star",
-  "all star": "is_all_star",
-  allstar: "is_all_star",
-  all_star: "is_all_star",
-  "is all star": "is_all_star",
-  star: "is_all_star",
-};
-
-function normalizeHeader(header: string): string {
-  const h = header.trim().toLowerCase();
-  return HEADER_ALIASES[h] ?? h;
-}
 
 // A cell starting with = + - @ can run as a formula when the file is opened
 // in a spreadsheet, so neutralize it.
@@ -72,7 +59,7 @@ export function UserImportForm({ defaultPassword }: { defaultPassword: string })
     Papa.parse<Record<string, string>>(file, {
       header: true,
       skipEmptyLines: "greedy",
-      transformHeader: normalizeHeader,
+      transformHeader: normalizeUserHeader,
       complete: (results) => {
         const headers = results.meta.fields ?? [];
         const missing = REQUIRED_HEADERS.filter((h) => !headers.includes(h));
@@ -199,6 +186,7 @@ export function UserImportForm({ defaultPassword }: { defaultPassword: string })
                 <th className="px-2 py-2">Role</th>
                 <th className="px-2 py-2">Home market</th>
                 <th className="px-2 py-2">All-star</th>
+                <th className="px-2 py-2">Pass</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-black/5">
@@ -267,6 +255,11 @@ function PreviewTableRow({ plan }: { plan: UserRowPlan }) {
               ? "★"
               : "no"
           : raw.is_all_star}
+      </td>
+      <td className="px-2 py-2 capitalize">
+        {user
+          ? (user.passLevel ?? (plan.action === "add" && user.role === "comic" ? "full" : "—"))
+          : raw.pass_level || "—"}
       </td>
     </tr>
   );
